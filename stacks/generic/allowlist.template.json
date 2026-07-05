@@ -1,0 +1,11 @@
+{
+  "_comment": "Generic stack permission-allowlist ADDITIONS (concierge-filled). The install concierge fills {{BUILD_CMD}}/{{TEST_CMD}}/{{LINT_CMD}}/{{FMT_CMD}} from the detected toolchain and UNIONS permissions.allow into .claude/settings.json (on top of the base read-only set). Only safe, non-destructive dev + read-only introspection commands belong here — destructive/irreversible ops (publish, global install, dependency re-lock) stay ABSENT and gated by .claude/hooks/pretooluse-safety-gates.sh. Wildcard `:*` covers arguments. Remove any placeholder your project does not use, and add your package manager's read-only query commands (dependency tree / metadata / version) as further entries.",
+  "permissions": {
+    "allow": [
+      "Bash({{BUILD_CMD}}:*)",
+      "Bash({{TEST_CMD}}:*)",
+      "Bash({{LINT_CMD}}:*)",
+      "Bash({{FMT_CMD}}:*)"
+    ]
+  }
+}

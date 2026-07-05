@@ -1,0 +1,42 @@
+{
+  "_comment": "Python stack permission-allowlist ADDITIONS. The install concierge UNIONS permissions.allow into .claude/settings.json (on top of the base read-only set). Every command here is a safe, everyday dev operation: pytest/ruff/mypy/pyright read source (ruff format writes only style); uv/poetry sync/lock/tree/list and pip list/show/freeze are project-env or read-only introspection; a plain in-venv install writes only the project virtualenv from the lockfile. The DANGEROUS variants are NOT waved through — a global/system/user-site install (sudo, --user, --break-system-packages, uv pip --system, uv tool, pipx), a venv wipe, and any publish stay gated by .claude/hooks/pretooluse-safety-gates.sh (see gate-fragment.sh), which overrides this allowlist. `twine upload` and tool `publish` are deliberately ABSENT here. Wildcard `:*` covers arguments.",
+  "permissions": {
+    "allow": [
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format:*)",
+      "Bash(mypy:*)",
+      "Bash(pyright:*)",
+      "Bash(ty:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m mypy:*)",
+      "Bash(python -m ruff:*)",
+      "Bash(python --version:*)",
+      "Bash(python3 --version:*)",
+      "Bash(uv run:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv lock:*)",
+      "Bash(uv add:*)",
+      "Bash(uv remove:*)",
+      "Bash(uv tree:*)",
+      "Bash(uv pip list:*)",
+      "Bash(uv pip freeze:*)",
+      "Bash(uv build:*)",
+      "Bash(uv --version:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(pip list:*)",
+      "Bash(pip show:*)",
+      "Bash(pip freeze:*)",
+      "Bash(pip check:*)",
+      "Bash(pip --version:*)",
+      "Bash(poetry run:*)",
+      "Bash(poetry install:*)",
+      "Bash(poetry lock:*)",
+      "Bash(poetry show:*)",
+      "Bash(poetry check:*)",
+      "Bash(poetry --version:*)"
+    ]
+  }
+}

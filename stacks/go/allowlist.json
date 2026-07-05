@@ -1,0 +1,25 @@
+{
+  "_comment": "Go stack permission-allowlist ADDITIONS. The install concierge UNIONS permissions.allow into .claude/settings.json (on top of the base read-only set). Every command here is a safe, non-destructive dev operation: build/test/vet/list read source and write only regenerable build/cache output; gofmt/goimports/golangci-lint fmt reformat source (reversible via git); go mod tidy/download/verify/graph/why reconcile or introspect dependencies; doc/version are read-only. Irreversible/global go ops (install, clean -modcache, mod edit rewrites, a semver tag push = module publish) are deliberately ABSENT — they stay gated by .claude/hooks/pretooluse-safety-gates.sh (see gate-fragment.sh). `go env` is omitted because `go env -w` mutates global toolchain config. Wildcard `:*` covers arguments. Currency-checked vs go.dev, golangci-lint.run, staticcheck.dev on 2026-07-03.",
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(go list:*)",
+      "Bash(go doc:*)",
+      "Bash(go version:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go mod download:*)",
+      "Bash(go mod verify:*)",
+      "Bash(go mod graph:*)",
+      "Bash(go mod why:*)",
+      "Bash(gofmt:*)",
+      "Bash(goimports:*)",
+      "Bash(golangci-lint run:*)",
+      "Bash(golangci-lint fmt:*)",
+      "Bash(golangci-lint version:*)",
+      "Bash(golangci-lint help:*)",
+      "Bash(staticcheck:*)"
+    ]
+  }
+}

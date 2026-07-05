@@ -1,0 +1,11 @@
+# Operator-only build artifacts — NOT part of the shippable kit.
+# These reference the source project's internals + local paths and are kept
+# local only (payload-only publish decision, 2026-07-05).
+/maintainer/
+/DISTILLATION-PLAN.md
+/component-inventory.md
+/fix-forward-register.md
+
+# Build/scratch
+*.zip
+.DS_Store

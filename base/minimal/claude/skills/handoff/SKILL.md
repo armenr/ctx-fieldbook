@@ -1,0 +1,153 @@
+---
+name: handoff
+description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
+provenance: kit-template
+created: 2026-07-03
+last-modified: 2026-07-03
+tags: [skill, lifecycle, handoff]
+---
+
+# /handoff — Capture session state to a durable, curated artifact
+
+When invoked, do these steps in order. Be honest about what you know vs. what you'd be guessing.
+
+## Detect invocation mode
+
+- **Manual** — user typed `/handoff`. Report findings when done.
+- **Silent (via PreCompact hook)** — the hook injected a `systemMessage` directive. Complete the work, then reply `NO_REPLY` (no user-facing prose).
+
+Default to manual unless the systemMessage context indicates otherwise.
+
+## 1. Pull current state
+
+```bash
+git log --oneline -8
+git status -s
+git rev-list --count HEAD ^origin/{{DEFAULT_BRANCH}} 2>/dev/null || echo "(no upstream)"
+```
+
+If the session touched runtime-facing code, gather minimal verification (the latest `{{BUILD_CMD}}` / `{{LINT_CMD}}` / `{{TEST_CMD}}` result; a `{{CODE_INTEL_TOOL}}` reachability output if a wiring claim is in flight). Only what's relevant to "what changed this session." Don't over-fetch.
+
+### 1.4 Pull the latest sitrep (consume the zero-loss checkpoint)
+
+The anti-naive-summarization tier lives in `checkpoints/` (`/sitrep`), not in this skill. Find the newest checkpoint:
+
+```bash
+ls -t .agent-docs/checkpoints/*.md 2>/dev/null | head -1
+```
+
+If a `/sitrep` post-dates the current `handoff.md`, READ it — it holds the dead-ends, the rejected alternatives, and the exact in-flight pause point that a naive session summary drops. Fold its content into the handoff's §Anti-assumptions (point 6) and §Detour-chain (point 6 below). The handoff is the curated bridge; the sitrep is the forensic record it draws from. If the session did substantial investigation and NO sitrep exists, consider writing one (`/sitrep`) BEFORE regenerating the handoff so the dead-ends are captured at full fidelity.
+
+## 2. Archive existing handoff (if it exists)
+
+```bash
+if [ -f .agent-docs/now/handoff.md ]; then
+  TS=$(date -u +%Y-%m-%d-%H%M%S)
+  SLUG=$(grep -m1 '^# ' .agent-docs/now/handoff.md \
+    | sed 's/^# //; s/—.*//' | tr '[:upper:]' '[:lower:]' \
+    | tr -c 'a-z0-9\n' '-' | sed 's/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
+  mkdir -p .claude/handoffs
+  cp .agent-docs/now/handoff.md ".claude/handoffs/${TS}-${SLUG:-handoff}.md"
+fi
+```
+
+(Archive filename uses UTC — machine-sortable. Frontmatter dates below use LOCAL — see §8.)
+
+## 3. Rewrite `.agent-docs/now/status.md` in place
+
+Fleeting — overwrite (target 80-120 lines): TL;DR · Branch · Build/runtime state (delta) · Phase status table (if mid-procedure) · Working tree · Gates (`{{BUILD_CMD}}`/`{{LINT_CMD}}`/`{{TEST_CMD}}`) · Doc/context system · What this means for next steps. Update `last-modified` (local).
+
+## 4. Update `.agent-docs/now/work-plan.md`
+
+Mark completed items ✅; surface the IMMEDIATE NEXT ACTION at the top; update `last-modified`.
+
+## 5. Update `.agent-docs/now/open-questions.md`
+
+Move resolved questions to "Recently resolved" with a closure reference (commit / `ADR-NNNN` / log entry); add newly-surfaced questions; update `last-modified`.
+
+## 6. Append entry to `.agent-docs/log.md`
+
+Newest at top: `## [YYYY-MM-DD] handoff | <one-line session summary>` + 2-3 lines. Plus discrete `decision | ...`, `memory | ...`, `ingest | ...` entries as warranted.
+
+## 6.5 Conversation-residue sweep (knowledge that lives ONLY in the conversation)
+
+Steps 3-6 cover `now/*` + `log.md`. Long sessions accumulate knowledge that belongs to OTHER surfaces and is silently lost otherwise. Walk this checklist:
+
+1. **Business/contractual/product facts spoken by the operator** → `memories/` doc. A requirement that lives only in chat is invisible to every future workflow/context pack.
+2. **Corrections/reversals to filed docs decided in conversation** → edit the doc IN PLACE, dated (never silently rewrite, never leave it wrong).
+3. **Operator rulings ledger** — scan the WHOLE session (not just the tail) for decisions the operator made; each lands in `work-plan` (decisions table) + feeds handoff.md §Recent decisions. Intent statements count ("we're planning to X").
+4. **Promised-but-unfiled items** — anything you said "I'll draft / queued / next batch": do it now or file it as an explicit work-plan/OQ line.
+5. **Analyses/research still only in ephemeral / temp-dir output files** → a `research/<R-id>/` tier file (Full profile) or a `reference/` doc, with provenance + `sources:` front-matter. **These are EPHEMERAL — temp dirs clear.** Rescue any raw material with residual value beyond what a synthesis already captured.
+6. **Secrets/keys/regulated or user data that transited the conversation** → OQ or ops-note for rotation/handling consideration.
+7. **Anti-assumptions / traps** → feed §Anti-assumptions (below). Every place the OBVIOUS read was WRONG.
+8. **Findings your own tooling surfaced about your OWN code this session** (a linter/analyzer/code-intel result, a `{{CODE_INTEL_TOOL}}` dead-code or reachability flag) not yet filed → a `memories/` claim or an `OQ-`.
+9. **Reusable recipes / verification gates** discovered → into §Immediate-next verbatim (+ a `reference/` doc if substantial).
+10. **Hands-on artifacts / scratch prototypes built OUTSIDE the repo** (scratch dirs, throwaway packages, spike harnesses, prototype scripts) → handoff.md §Breadcrumbs with location + pass/fail verdict + keep-or-clean; promote a durable spike to `experiments/` (Full profile). They live in no git tree and are silently lost otherwise.
+11. **Environment / build recipes that worked** (the exact incantation — env vars, flags, toolchain/version pins, lib paths) → capture **VERBATIM as a labeled, greppable block** (handoff.md §Immediate-next or a `reference/` runbook). The recipe IS the reproducibility; a prose summary is not.
+12. **Current live-runtime state a fresh agent would naively trust but shouldn't** — a stale/empty index or cache, a running server holding a port/lock, a built-but-stale binary, a backgrounded job mid-flight, an ephemeral scratch artifact already gone → capture the CURRENT condition + the workaround → §Anti-assumptions. Distinct from a build recipe (item 11): not "how to build" but "what is true about the running system *right now* that will silently mislead the next agent."
+
+The PRIMARY defense is capture-at-the-moment (`/flush`); this sweep is the net.
+
+### 6.5a Multi-agent residue (OPTIONAL — only if you dispatched sub-agents or ran workflows this session)
+
+Multi-agent dispatch / workflow sessions accumulate fan-out provenance that dies at compaction. If you ran none, skip this sub-block.
+
+- **Ledger the completed dispatches** — a short table of `runId / FR-NNNN → what it built → status (pass/fail/resumed) → what landed → verdict (IMPL/WIRED/DEFER)`. Durable leverage for audit, cost, and resume. Fold into §Detour-chain or §Recent commits. Record resume mechanics verbatim (the persisted script path + the resume-from-run id) — cached agents replay; only edited/failed agents re-run.
+- **Disposition each in-flight background task/workflow** — done+filed, kill, or carry into §Immediate-next with resume mechanics. **AND for each, capture POST-COMPLETION SCRUTINY — what THIS session knows to verify or distrust in the workflow's RESULT that a fresh-orient agent would not:** result-integrity checks (did the agents' claimed file-writes actually land? did an edit-capable agent mutate the shared worktree — `git status` the relevant paths?), known confounds in the output's metrics, and "trust X not Y" caveats earned by direct experience. Resume mechanics tell the next agent HOW to continue; this tells them WHAT to disbelieve.
+- **Un-verified dispatches + dangling traceability** — any dispatch-charter (`FR-NNNN`) / sub-agent / workflow leg that returned but was never verified (the `/debrief` step, Full profile) → verify it now (or carry an explicit "debrief pending" line into §Immediate-next). Any work-unit sitting at `IMPL` (not `WIRED`) in `traceability/` without a `DEFER` rationale → flag it; an unwired claim is the #1 recurring trap. **HARD DRAIN — not headline-level: for EACH completed workflow/agent, OPEN its `discoveries[]` / out-of-scope return field and confirm EVERY item (not just the loud ones a synth/review surfaced) has a durable home (`OQ-` / register row / lesson).** The less-prominent items buried in a build or recon agent's `discoveries[]` are exactly what a headline read misses — drain item-by-item. **RE-VALIDATE DEFERRAL POINTERS:** any "do at X" forward-pointer whose target wave/WU/phase has since COMPLETED is now orphaned → re-home it to a LIVE trigger. **BIDIRECTIONAL IDs:** filing `OQ- → WU-` owes the reverse `WU- → OQ-` back-reference, so the target WU surfaces it when worked.
+
+## 6.6 Index lint (OPTIONAL — Standard profile only)
+
+If the doc linter hook is installed (Standard profile), run `python3 .claude/hooks/lint-docs.py --root .agent-docs`. `/handoff` is the thorough checkpoint: fix EVERY reported drift across all managed dirs (entry shape per the `CONVENTIONS.md` index template; carry-away must be traceable — write the entry WITHOUT one rather than guess). Append a `lint | ...` op line to `log.md` when fixed. If the hook isn't installed, skip this step.
+
+## 7. Lesson reflection (two-step gradient + per-entry review)
+
+`/handoff` is the promotion gate for the lessons ledger (`lessons/`, CONVENTIONS §1 · `templates/lesson-template.md`). Two-step gradient prompting mitigates same-model reflection failure modes (mode collapse, confirmation bias).
+
+- **7a — Critique-only:** "What didn't go well this session? Surprises, near-misses, failures, instincts that turned out wrong. Do NOT propose changes — just enumerate." Write to a transient buffer.
+- **7b — Propose-only:** Given 7a, "What (if anything) should enter the lessons ledger? For each: Trigger, Claim, Evidence." Append 0–3 qualifying candidates to `.agent-docs/now/lessons/proposals.md` (`provenance: llm-draft`, `maturity: seedling`). If a lesson-distillation pass already ran this session, use its proposals. If none qualify, that's fine — don't lower the bar.
+- **7c — Per-entry review with the user:** for each proposal, surface id + one-line claim + severity; ask **accept / defer / reject**. Accept → move to `.agent-docs/lessons/<id>.md`, add a `lessons/index.md` entry (+ a `now/lessons/MOC.md` row if Tier-1). Defer → keep in proposals. Reject → remove + log a one-line reason. **Silent/hook mode:** do NOT auto-promote; leave proposals for the next manual `/handoff`.
+- **7d — If mode-collapse:** if 7b just restates 7a, escalate to a separate critic subagent.
+
+## 8. Regenerate `.agent-docs/now/handoff.md`
+
+THE load-bearing artifact. **Date rule:** `date +%Y-%m-%d` (LOCAL) for frontmatter + body dates; UTC only for the archive filename in §2.
+
+Frontmatter: `provenance: llm-reviewed`, `created`/`last-modified` (local), `tags: [current, handoff, session-state]`, `related: [status, work-plan, open-questions]`, `generator: /handoff`.
+
+Sections:
+
+1. `# Session handoff — READ FIRST` (with date)
+2. `## Project in one paragraph` — repo, branch, current initiative
+3. `## Current state summary` — paragraph + phase status table if mid-procedure
+4. `## Important context` — decisions with rationale, standing rules, gotchas the next agent MUST know. **Reference ADRs / memories / runbooks by ID** rather than duplicating.
+5. `## ⚠️ Anti-assumptions / traps` — **REQUIRED, load-bearing.** The single best defense against "leaving room for assumptions." Every "looks like X → actually Y" from the session: corrected inference errors, misleading names, cross-layer drift the obvious grep misses, dead-looking-but-load-bearing units, tooling traps. Wrong-inference + correction + evidence. If the session genuinely surfaced none, scan the touched units anyway; "none" is a rare valid answer, not a skip.
+6. `## Detour-chain` — **REQUIRED.** The side-quest map (MAIN objective → each nested side-quest: what spawned it → what it found → resolved/open), so the next agent can climb back to the main thread.
+7. `## Immediate next steps` — concrete, with specific paths, commands, confirmation gates. Load-bearing for resume. For any in-flight / just-completed workflow carried forward (if you ran any), add a **verify-AFTER-the-workflow block**: the result-integrity checks + metric confounds + "trust X not Y" caveats the next agent must apply to its output (not just resume mechanics). Include any reusable **env/build RECIPE** / verification GATE discovered as a **labeled, greppable verbatim block**.
+8. `## Recent decisions made` — table: when, decision, rationale/reference.
+9. `## Breadcrumbs / artifacts` — scratch dirs / spike harnesses built outside the repo (location + verdict + keep-or-clean); ephemeral / temp-dir outputs + their durable transcript paths + resume commands. Things that live in no git tree.
+10. `## Reading order` — pointer at status/work-plan/open-questions/CLAUDE.md **+ the latest `checkpoints/` sitrep if one post-dates this handoff** (it is the zero-loss forensic record — the handoff curates; the sitrep preserves the dead-ends at full fidelity).
+11. `## Recent commits` — head of branch (last 5). (Dispatch-heavy session? Fold the §6.5a ledger here.)
+
+Footer: "How to refresh this file" → `/handoff`. Length: 120-200 lines (anti-assumptions + detour-chain earn the extra length).
+
+### Eject/migration mode (OPTIONAL — when the operator signals context will move repos)
+When part of the context belongs in a DIFFERENT repo (a new meta-repo, a sibling project), §Immediate-next becomes an **EJECT INVENTORY**: (a) the explicit what-moves list (docs by path + now/* slices), (b) what STAYS, (c) the **move caveats** — fix cross-doc path/ID references, preserve `provenance:`/`sources:` front-matter, re-run the index lint in BOTH repos after, **copy-then-verify before deleting** (the source working tree may be the only copy if uncommitted). The handoff CAPTURES the eject plan; a later session EXECUTES it — do NOT eject during the handoff unless told to.
+
+## 9. Report
+
+**Manual:** "N files updated; previous handoff archived to `<path>`" + one-line summary per file + "Recommended next: review + commit (don't auto-commit)."
+**Silent (hook):** reply literally `NO_REPLY`.
+
+**DO NOT auto-commit in either mode.**
+
+## Anti-patterns
+
+- Do NOT run mid-destructive-operation. Wait for a natural checkpoint.
+- Do NOT let "immediate next action" be vague. Specific paths + commands + gates.
+- Do NOT duplicate ADR/memory content — reference by ID.
+- Do NOT auto-commit. Do NOT skip the archive step. Do NOT include secrets or regulated / user data.
+
+## Design rationale
+
+The session-lifecycle contract + the residue-sweep and lesson-gate disciplines live in `standing-rules-core.md` (§Context lifecycle, §Findings-decisions-and-review-feedback-to-disk) and `CONVENTIONS.md` (§6 checkpoint contract this skill consumes, §1 lessons ledger).

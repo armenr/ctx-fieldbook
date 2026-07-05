@@ -1,0 +1,55 @@
+<!--
+Fieldbook target-repo constitution TEMPLATE (template-version: 1.0.0).
+
+The concierge instantiates this into the colleague's PROJECT-ROOT CLAUDE.md, filling the {{PLACEHOLDER}}
+scalars from the interview. It is a POINTER constitution: it orients the agent and names the load-bearing
+rules, then routes to .agent-docs/ for detail (progressive disclosure — the constitution stays short).
+
+If the target repo already has a CLAUDE.md, this content is spliced into a backed-up, marked block
+(<!-- fieldbook:start --> … <!-- fieldbook:end -->) per concierge/merge-strategy.md — never clobbered.
+Used by all profiles; the pointer is the same, only the .agent-docs/ surfaces it routes to differ.
+Delete this comment block when instantiating.
+-->
+
+# {{PROJECT_NAME}}
+
+{{PROJECT_ONE_LINER}}
+
+## Orient FIRST
+
+At the start of a session run **`/orient`** — it reads `.agent-docs/now/handoff.md` (the curated bridge
+from the last session) and verifies it against git reality. Do not act on stale state; if `/orient` says
+the handoff is stale, refresh it before proceeding. The operating context lives in `.agent-docs/`, not in
+memory:
+
+- `.agent-docs/now/{status,work-plan,open-questions}.md` — current state, what's next, open questions.
+- `.agent-docs/CONVENTIONS.md` — the schema contract (how docs are written, the ID spine, the lint rules).
+- `.claude/rules/standing-rules-core.md` — the **canonical operational rules** (safety, quality gates,
+  findings-to-disk, adversarial separation). Read them; they are load-bearing, not decorative.
+
+## Progressive disclosure — route, don't browse
+
+`.agent-docs/` is reached through per-directory `index.md` routing and front-matter breadcrumbs, **not**
+by bulk-reading the tree. Start at `.agent-docs/index.md`; open a doc via its dir's index. Never load a
+whole directory to "get context" — that is exactly the context-bomb the system exists to prevent.
+
+## Quality gates (the acceptance bar)
+
+A change is not done because it compiles. The gates must pass, and never be bypassed:
+
+- Build: `{{BUILD_CMD}}`
+- Test: `{{TEST_CMD}}`
+- Lint: `{{LINT_CMD}}`
+- Format: `{{FMT_CMD}}`
+
+A behavior change **owes a test that would fail without it.** And "green tests" ≠ "wired": verify a change
+is reachable from a real entrypoint (IMPL→WIRED), proving it with `{{CODE_INTEL_TOOL}}` or the
+reachability-prover menu in `.claude/rules/standing-rules-core.md`. Default branch: `{{DEFAULT_BRANCH}}`.
+
+## Session lifecycle
+
+`/orient` at the start · `/flush` mid-session when `now/*` has drifted · `/handoff` at session end or
+before compaction · a `/sitrep` checkpoint before anything risky. Findings, decisions, and dead-ends go
+to disk as a byproduct of the work — knowledge that lives only in the conversation is gone at compaction.
+
+<!-- Installed by Fieldbook. See FIELD-GUIDE (in the kit) for the daily loop and "which doc type when". -->

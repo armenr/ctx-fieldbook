@@ -1,0 +1,25 @@
+{
+  "_comment": "Rust stack permission-allowlist ADDITIONS. The install concierge UNIONS permissions.allow into .claude/settings.json (on top of the base read-only set). Every command here is a safe, non-destructive dev operation: build/check/clippy/test/fmt/nextest read source and write only regenerable build output (target/); tree/metadata and the rustc/rustup entries are read-only introspection. Destructive/irreversible cargo ops (publish, install, update) are deliberately ABSENT here — they stay gated by .claude/hooks/pretooluse-safety-gates.sh (see gate-fragment.sh). Wildcard `:*` covers arguments.",
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo nextest:*)",
+      "Bash(cargo tree:*)",
+      "Bash(cargo metadata:*)",
+      "Bash(cargo doc:*)",
+      "Bash(cargo --version:*)",
+      "Bash(cargo -V:*)",
+      "Bash(rustc --version:*)",
+      "Bash(rustc -V:*)",
+      "Bash(rustc --print:*)",
+      "Bash(rustup show:*)",
+      "Bash(rustup toolchain list:*)",
+      "Bash(rustup which:*)",
+      "Bash(rustup --version:*)"
+    ]
+  }
+}
