@@ -182,11 +182,17 @@ investigation), `INC-NNN` (incident) — defined in the addendum.
   dead-ends ARE the value; a summarizer that drops them destroys the WHY. An ADR without this field
   is lint-incomplete. The rationale-with-alternatives is authored *before* the work, not
   reverse-engineered after.
+- **Capture the load-bearing rationale, not just the verdict.** Beyond "options + why rejected," the
+  ADR names **(a) the deciding axis** the choice turned on, **(b) an honest steelman of the runner-up**
+  (never a strawman), and **(c) the flip-condition** — the goal / evidence / constraint that would
+  reverse it (the pre-written trigger for a future reversal). Rule of thumb: *if the conversation that
+  produced the decision was more insightful than the ADR, the ADR is not done.*
 
 **ADR body shape:** Context (what forced it) → Alternatives Considered (options + why rejected /
-superseded-but-instructive) → Prior art / reference (cite the backing source, or flag a novel shape
-as a risk) → Decision (one paragraph) → Consequences (good and bad) → Related (ADRs, memories, the WU +
-log entry where decided). See `templates/adr-template.md`.
+superseded-but-instructive + **the deciding axis + a runner-up steelman + the flip-condition**) → Prior
+art / reference (cite the backing source, or flag a novel shape as a risk) → Decision (one paragraph) →
+Consequences (good and bad) → Related (ADRs, memories, the WU + log entry where decided). See
+`templates/adr-template.md`.
 
 ---
 

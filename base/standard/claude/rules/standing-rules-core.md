@@ -64,9 +64,15 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
   in conversation is DEAD at compaction. Write it where it belongs the moment you have it — a decision →
   an ADR (`decisions/`); a gotcha → a `memories/` claim; an investigation result → a checkpoint or
   `research/` track. Verdicts carry on-disk evidence (a `log.md` timestamp, a commit SHA, a command output).
-- **Decision-rationale-with-alternatives, written BEFORE acting.** A non-trivial choice gets an ADR with a
-  non-empty `## Alternatives Considered` field authored *before* the work, not reverse-engineered after —
-  the rejected options + why are the value. An ADR without that field is lint-incomplete.
+- **Decision-rationale-with-alternatives, written BEFORE acting — capture the load-bearing WHY, not the
+  verdict.** A non-trivial choice gets an ADR with a non-empty `## Alternatives Considered` field authored
+  *before* the work, not reverse-engineered after — the rejected options + why are the value. "Chose X over
+  Y" is NOT enough: record **(a) the deciding axis** the choice actually turned on, **(b) an honest steelman
+  of the runner-up** (why the rejected front-runner is genuinely good — never a strawman), and **(c) the
+  flip-condition** — what would reverse it (a different goal, new evidence, a changed constraint; e.g. "for a
+  product rather than a reference architecture, we'd have chosen the other"). If the conversation that
+  produced the decision was richer than the ADR, the ADR is INCOMPLETE. An ADR without the field is
+  lint-incomplete.
 - **Capture ALL review feedback — every severity, never just the blockers.** When ANY review pass returns
   findings, EVERY finding gets a durable home AND an explicit disposition: `FIXED` · `DEFER` (+reason) ·
   `WONTFIX` (+reason) · `TRACKED` (→ a new `OQ-`). Minors and nits included. "CLEAN except a few nits" is

@@ -27,9 +27,16 @@ tags: []
 
 ## Alternatives Considered          <!-- MANDATORY (§5) — the dead-ends ARE the value -->
 <!-- Each rejected option + WHY it was rejected (its superseded-but-instructive lesson).
-     A summarizer that drops these destroys the WHY. Written BEFORE acting. -->
+     A summarizer that drops these destroys the WHY. Written BEFORE acting.
+     Capture the LOAD-BEARING why, not just the verdict: the deciding axis, a runner-up STEELMAN, and the
+     flip-condition (below). If the conversation was richer than this section, it isn't done. -->
 - Option A — rejected because …
-- Option B — rejected because … (what it would have cost / what it taught us)
+- Option B (the runner-up) — genuinely strong because … (no strawman) · rejected because … (on the deciding axis)
+- <Chosen option> — named here; defended in Decision.
+
+**Deciding axis:** <the one dimension the choice turned on — the thing that, if it changed, changes the answer>.
+**Flip-condition:** <what would reverse this — a different goal, new evidence, a changed constraint
+(e.g. "for a product rather than a reference architecture, we'd choose the runner-up")>.
 
 ## Prior art / reference
 <!-- Cite the backing reference architecture, canonical pattern, or ecosystem precedent.

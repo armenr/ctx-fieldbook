@@ -83,6 +83,16 @@ the reasons they lost are the actual value: they stop the team from re-litigatin
 they make a later reversal legible ("we knew about X; here's why it lost; here's what changed"). A
 decision doc with an empty Alternatives field is a decision that was never really made.
 
+But "chose X over Y" is the thin version, and the thin version is what compaction leaves you with. The
+load-bearing rationale is three things the bare verdict discards: **the deciding axis** (the one dimension
+the choice actually turned on — not the ten pros and cons, the *one* that decided it); **a steelman of the
+runner-up** (why the option you rejected is genuinely strong — a strawman'd alternative makes a later
+reversal illegible, because when the runner-up's moment finally comes you won't recognise it); and **the
+flip-condition** (the goal, evidence, or constraint that would reverse the call — "for a product, not a
+reference architecture, we'd choose the other"). The flip-condition is often the single most valuable line
+in the ADR: it is the pre-written trigger for the future reversal. The tell that an ADR is under-written is
+simple — the conversation that produced the decision was more insightful than the record of it.
+
 ## Adversarial separation — the reviewer is never the builder
 
 An author cannot reliably review their own work; they share its blind spots and have a stake in its
