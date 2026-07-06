@@ -157,6 +157,19 @@ the profile already includes.
   stack gate fragment (`generic/gate-fragment.sh` has the pattern; first-class packs already gate their
   language's foot-guns — publish, global install, dependency re-lock).
 
+**Everyone (any profile) — the statusline:**
+> "Want the Fieldbook status line? One dense line at the bottom: repo + branch, model + context window,
+> auto-compact state, context used (% and tokens), your 5h/7d rate-limit usage with reset countdowns, and
+> your account email. Python-only, no extra installs. Most people run it **globally** (same line in every
+> project); I can also scope it to just this repo. Or skip it."
+- Only offer if `modules/statusline/` exists in this build. Ask the SCOPE:
+  - **global** (recommended): copy to `~/.claude/statusline.py` + add `statusLine` to `~/.claude/settings.json`
+    (`python3 ~/.claude/statusline.py`). **This writes to the user's GLOBAL config** — flag it explicitly
+    and get a distinct yes (it's the one module that touches `~/.claude`, not just the repo).
+  - **project**: copy to `<target>/.claude/statusline.py` + add `statusLine` to the target
+    `settings.json` with the **absolute** target path. Overrides any global statusline for this repo.
+  - Detail + the exact settings blocks + mechanics: `modules/statusline/README.md`.
+
 **Full only:**
 > "Full ships two optional add-ons: the **research pipeline** skill (adversarially-gated multi-source
 > investigations) and the **revisit-ledger** (typed change-intent markers in code). Want either, both,

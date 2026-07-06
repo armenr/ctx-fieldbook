@@ -151,6 +151,11 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 | revisit-ledger | `modules/revisit-ledger/revisit-ledger.template.md` | `<target>/.agent-docs/reference/revisit-ledger.md` (fill + drop `.template`) |
 | revisit-ledger | `modules/revisit-ledger/revisit-lint.sh` | `<target>/.claude/hooks/revisit-lint.sh` |
 | revisit-ledger | `modules/revisit-ledger/README.md` | reference only (not copied to target) |
+| statusline (ANY profile) | `modules/statusline/statusline.py` | **global:** `~/.claude/statusline.py` · **project:** `<target>/.claude/statusline.py` (+ a `statusLine` block in the chosen `settings.json` — see the module README) |
+
+> The statusline is available at **any** profile (it's a per-user quality-of-life add-on, not tied to
+> Full) and is the one module whose **global** form writes to `~/.claude` — the concierge asks scope
+> (global/project) and gets a distinct yes for a global write.
 
 > `agents-starter` / `native-lite` appear in the distillation plan as Full-tier opt-in modules. Offer
 > them ONLY if their directory exists under `modules/` in this kit build; otherwise they are not part of

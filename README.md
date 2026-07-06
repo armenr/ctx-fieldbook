@@ -33,6 +33,11 @@ Adoption is the point, so the payload is split into three additive profiles — 
 
 Start at Standard; grow into Full only when you feel the need.
 
+**Optional add-on — the statusline.** A python-only Claude Code status line (repo + branch, model +
+context window, auto-compact state, context %/tokens, 5h/7d rate-limit usage, account email). Available at
+any profile, global or project-scoped — the concierge offers it, or install it by hand per
+`modules/statusline/README.md`.
+
 ## How to install
 
 The intended path: **open Claude Code with this folder as your working directory**, and it becomes an

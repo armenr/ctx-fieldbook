@@ -92,10 +92,19 @@ dry-run plan and the manifest are stable across runs.
     `skills/research-pipeline/SKILL.md` (from `modules/research-pipeline/`).
 2.3 **Hooks (non-assembled)** — Minimal: COPY `hooks/sessionstart-state-router.sh`,
     `hooks/precompact-handoff-trigger.sh`. Standard+: COPY `hooks/lint-docs.py`,
-    `hooks/lint-docs.README.md`, `hooks/install-hooks.sh`, `hooks/README.md`; FILL
+    `hooks/lint-docs.README.md`, `hooks/lint-agent-docs-indexes.sh` (the fast index-lint the router +
+    pre-commit probe), `hooks/install-hooks.sh`, `hooks/README.md`; FILL
     `hooks/subagentstart-prefix.sh` (`{{PROJECT_NAME}}`). Full + opted revisit-ledger: COPY
     `hooks/revisit-lint.sh` (from `modules/revisit-ledger/`).
 2.4 `chmod +x` every installed `.sh` (portable chmod; ignore failures — `install-hooks.sh` re-chmods).
+2.5 **Statusline (opted, any profile — from `modules/statusline/`).** By chosen scope:
+    - **project:** COPY `modules/statusline/statusline.py` → `<target>/.claude/statusline.py`; record for
+      the Phase-4 `statusLine` block (absolute-path form).
+    - **global:** this is a **`~/.claude` write** — confirm the distinct yes from Q5 first, then COPY to
+      `~/.claude/statusline.py` and deep-merge a `statusLine` block into `~/.claude/settings.json`
+      (`python3 ~/.claude/statusline.py`), backing up that file per `merge-strategy.md`. Record both in
+      the manifest so uninstall can reverse the global write too.
+    - Exact settings blocks + mechanics: `modules/statusline/README.md`.
 
 ---
 
@@ -144,8 +153,14 @@ Standard-only hooks, so it MUST be pruned per profile):
     into the settings `permissions.allow` (dedup; preserve the base read-only set). Never add a mutating/
     publishing/global command to allow — those stay gated (they are deliberately absent from every pack
     allowlist).
-4.4 Drop the settings entries referencing `lint-agent-docs-indexes.sh` if that script isn't installed in
-    this build (see §Enforcement-gaps) — or install the Minimal index-lint if the kit provides it.
+4.4 The settings entries referencing `lint-agent-docs-indexes.sh` are valid at Standard+ (the script is
+    installed in Phase 2.3). At Minimal (no index-lint script), drop those entries so nothing points at an
+    absent script.
+4.4b **Statusline `statusLine` block (only if opted PROJECT scope in Q5/Phase 2.5).** Add to the target
+    `settings.json` top level, using the repo's ABSOLUTE path (cwd is undefined for statuslines; `~` and
+    `$CLAUDE_PROJECT_DIR` are not reliable there):
+    `"statusLine": { "type": "command", "command": "python3 <target-abs>/.claude/statusline.py", "padding": 0 }`.
+    Global scope does NOT touch the target settings.json — it edits `~/.claude/settings.json` in Phase 2.5.
 4.5 **Validate JSON** (parse the result) before writing. If `<target>/.claude/settings.json` already
     exists → this is a **deep-merge**, not a write: `merge-strategy.md` §settings-json (append hooks
     arrays, union `permissions.allow`, back up, re-validate, diff + yes).
