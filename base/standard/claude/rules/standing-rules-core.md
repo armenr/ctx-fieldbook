@@ -88,6 +88,19 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
 - **This applies to DESIGNS, not just code.** Pattern: `design → split → adversarial-review` BEFORE
   implementation. A design reviewed only by its author is unreviewed.
 
+## Cycle start — sweep inbound references
+
+- **Inbound-reference sweep at cycle start (the inward companion to scope-recon).** Before authoring a
+  work-unit's / stage's build, scope-recon looks OUTWARD (what the WU touches); ALSO look INWARD — run
+  `scripts/wu-refs.sh <WU/unit id> [stage]` to gather everything that references / awaits it across the
+  whole tree (a forgotten `DEFER→`, a gating `OQ`, an `RV` that lifts here, an ADR note, a review finding,
+  a dispatch charter, a code comment), and TRIAGE each: satisfied · do-this-cycle · unexpected→investigate ·
+  stale→remove. The `traceability/` ledger is the *intended* obligation store; the sweep is the
+  defense-in-depth that catches whatever leaked into the other surfaces (`git grep --untracked`, so
+  in-flight uncommitted files are swept). Cheap (one command, read-only), and it fails LOUD not silent — a
+  sweep that silently under-reports is worse than none, so **test your safety tools** (the original shipped
+  with a reserved-bash-variable bug that returned "no references" against a WU with dozens of real hits).
+
 ## Dispatch contract — scope-fence + halt-and-report, never freelance
 
 Every dispatched agent (Agent tool or Workflow worker) operates under this contract; bake it into the

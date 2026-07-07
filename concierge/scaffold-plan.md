@@ -86,6 +86,9 @@ dry-run plan and the manifest are stable across runs.
 2.1 **Rules** — Minimal: COPY `rules/agent-docs.md`, `rules/sensitive-data.md`. Standard+: FILL
     `rules/standing-rules-core.md` (`{{WORKSPACE_LAYOUT}}`, `{{PANIC_EQUIVALENT}}`, gate cmds,
     `{{CODE_INTEL_TOOL}}`), COPY `rules/standing-rules-rationale.md`.
+2.1b **Scripts** — Standard+: COPY-VERBATIM `base/standard/scripts/wu-refs.sh` → `scripts/wu-refs.sh`
+    (`chmod +x`) — the cycle-start inbound-reference sweep the standing-rule invokes (`git grep`-only, no
+    tokens to FILL). Minimal: skip (the sweep pairs with the Standard+ orchestration discipline).
 2.2 **Skills** — bare-name dirs under `.claude/skills/` (never namespaced, so `/orient` muscle memory
     transfers; distillation decision on skills). Minimal: FILL `skills/{orient,flush,handoff}/SKILL.md`.
     Standard+: FILL `skills/{sitrep,debrief,distill-lessons}/SKILL.md`. Full + opted:

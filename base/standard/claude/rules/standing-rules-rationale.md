@@ -102,6 +102,22 @@ stake, re-deriving the claim against the live tree, is the control. This applies
 code — a design reviewed only by its author is unreviewed, and design defects are the most expensive to
 discover late.
 
+## Cycle start — the inbound-reference sweep
+
+A work-unit rarely starts clean: by the time its cycle comes up, other work has parked obligations against
+it — a `DEFER→` row, an `OQ` homed to it, a `REVISIT` anchor that lifts here, an ADR note ("the next unit
+authors X"), a review finding, a code comment. The traceability ledger is *meant* to be the one place those
+live, but obligations leak into every other surface, and a ledger is only as complete as the discipline
+that fed it. Scope-recon looks outward — what files this unit touches — and catches nothing pointed *at*
+it. So the failure mode is quiet: a unit starts, does its planned work, and silently drops an obligation
+nobody re-read. The inbound sweep is the cheap mechanical counter — one `git grep` (including `--untracked`,
+because the obligation may sit in an uncommitted file written minutes ago) across every location an
+obligation could hide, gathered for triage. It does not decide; it refuses to let something be missed by
+*omission*. The deeper lesson is about safety tooling itself: the first version of this sweep shipped with a
+bug that made it silently return "no references" when there were dozens — the exact false-confidence it
+exists to prevent — and it was caught only by running it against a unit with known references. A safety
+check you have not tested against a known-positive is not yet a safety check.
+
 ## The dispatch contract
 
 A dispatched agent with a fuzzy scope will freelance: fix something adjacent that looked broken, refactor
