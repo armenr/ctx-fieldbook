@@ -3,7 +3,7 @@ name: research-pipeline
 description: Run a tiered, adversarially-gated research investigation under .agent-docs/research/<R-id>-<slug>/. Codified tiers — 00-landscape → NN-<track> deep-dives → MANDATORY adversarial gate (a clean-context skeptic re-checks decision-critical claims against PRIMARY sources BEFORE synthesis) → synthesis.md (the only Tier-2-loaded surface). Use for any multi-source investigation whose conclusion will feed a decision (an ADR, a build choice, a dependency adoption). Currency-check every decision-critical claim against current-year primary docs, never training data.
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 ---
 
 # /research-pipeline — tiered, adversarially-gated investigation
@@ -110,6 +110,9 @@ verifier sub-agent** that has NOT seen the track reasoning. Hand it ONLY:
 - the list of **decision-critical claims** from `00-landscape.md`, and
 - the instruction to **independently re-derive each against PRIMARY current-year sources** — not to
   confirm the tracks, but to try to break them.
+- for a design or decision-critical claim that rests on a dependency's behavior: the instruction to
+  **trace the load-bearing library source at file:line** — the dependency's actual code, not its
+  documentation.
 
 The verifier writes `adversarial.md`: per decision-critical claim — `confirmed` / `refuted` /
 `qualified` / `unresolved`, the primary source it checked against, and what (if anything) the tracks got

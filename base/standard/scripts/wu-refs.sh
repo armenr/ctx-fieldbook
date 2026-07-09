@@ -9,7 +9,7 @@
 # Companion to the READ-ONLY scope recon: recon looks OUTWARD (what the WU touches);
 # this looks INWARD (what references/awaits the WU). The traceability ledger is the
 # INTENDED obligation store; this is defense-in-depth against obligations that leaked
-# into ADR notes / open-questions / reviews / code comments instead.
+# into ADR notes / open-questions / reviews / dogfood findings / code comments instead.
 #
 # It only GATHERS — you TRIAGE each hit:
 #   [satisfied] · [do-this-cycle] · [unexpected → investigate] · [stale → remove]
@@ -19,8 +19,11 @@
 #   scripts/wu-refs.sh WU-05 'stage-2'      # also sweep a stage token
 #   scripts/wu-refs.sh U-A4c
 #
-# Tier-portable: the location groups are a SUPERSET across the minimal/standard/full
-# profiles; a group whose dir/file is absent in this repo is skipped silently. Uses
+# Tier-portable: the NAMED location groups cover the high-signal obligation stores across
+# the minimal/standard/full profiles, and a trailing catch-all sweeps the REMAINDER of
+# .agent-docs (checkpoints, now/handoff, lessons, memories, research, anything future) —
+# so no .agent-docs dir is ever silently unswept. A group whose dir/file is absent in
+# this repo is skipped silently. Uses
 # `git grep --untracked` so NEW/uncommitted files (a just-written ledger, review, ADR)
 # are swept; git grep still respects .gitignore.
 # NOTE: do not name a bash array `GROUPS` — it is a reserved builtin (supplementary GIDs).
@@ -50,10 +53,16 @@ _present () {
 
 group () {  # $1 = label ; $2.. = pathspecs
   local label="$1"; shift
-  local -a specs=(); local line out
-  while IFS= read -r line; do [ -n "$line" ] && specs+=("$line"); done < <(_present "$@")
-  # if only the exclude-magic/root remain (no real doc path), and this is a doc group, skip
-  [ ${#specs[@]} -eq 0 ] && return 0
+  local -a specs=(); local line out pos=0
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    specs+=("$line")
+    case "$line" in :!*) ;; *) pos=1 ;; esac
+  done < <(_present "$@")
+  # skip unless at least one REAL (non-exclude) path survived — a group reduced to
+  # excludes-only would otherwise pathspec the WHOLE tree (over-sweep), breaking the
+  # absent-dir-is-skipped-silently contract above.
+  [ "$pos" -eq 1 ] || return 0
   out="$(git grep -n -i --untracked -e "$TOKEN" -- "${specs[@]}" 2>/dev/null)" || out=""
   if [ -n "$out" ]; then
     printf '── %s ──\n%s\n\n' "$label" "$out"
@@ -70,10 +79,26 @@ sweep () {
   group "revisit-ledger (RV anchors that lift here)" .agent-docs/reference/revisit-ledger.md
   group "decisions / ADRs (parked notes)"            .agent-docs/decisions
   group "reviews (findings deferred here)"           .agent-docs/reviews
+  group "dogfood (self-audit findings)"              .agent-docs/dogfood
   group "work-plan / status"                         .agent-docs/now/work-plan.md .agent-docs/now/status.md
   group "log"                                        .agent-docs/log.md
   group "dispatch-charters"                          .agent-docs/dispatch-charters
   group "incidents"                                  .agent-docs/incidents
+  # Catch-all: the REST of .agent-docs (checkpoints, now/handoff, lessons, memories,
+  # research, anything future) minus every group already named above — so no .agent-docs
+  # dir is ever silently unswept.
+  group "rest of .agent-docs (catch-all)"            .agent-docs \
+    ':!.agent-docs/traceability' \
+    ':!.agent-docs/now/open-questions.md' \
+    ':!.agent-docs/reference/revisit-ledger.md' \
+    ':!.agent-docs/decisions' \
+    ':!.agent-docs/reviews' \
+    ':!.agent-docs/dogfood' \
+    ':!.agent-docs/now/work-plan.md' \
+    ':!.agent-docs/now/status.md' \
+    ':!.agent-docs/log.md' \
+    ':!.agent-docs/dispatch-charters' \
+    ':!.agent-docs/incidents'
   group "code + specs (outside .agent-docs)"         . ':!.agent-docs' ':!scripts/wu-refs.sh'
   [ "$ANY" = 0 ] && echo "(no references found)"
   echo

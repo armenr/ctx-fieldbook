@@ -17,6 +17,11 @@ Small, self-contained shell hooks wired through `.claude/settings.json`. Each de
 | `subagentstart-prefix.sh` | SubagentStart | Injects the multi-agent prompt-prefix; for built-in `Explore`/`Plan` agents (which skip `CLAUDE.md`) also cats `standing-rules-core.md`. |
 | `pretooluse-safety-gates.sh` | PreToolUse (`Bash`) | Blocks/asks on universal foot-guns (force-push to a protected branch, checks-bypass, recursive `rm`, `git reset --hard`) and injects cwd-safety context on mutative git/fs ops. |
 
+> **Tier note.** `sessionstart-state-router.sh` and `precompact-handoff-trigger.sh` SHIP in the
+> Minimal tier (`base/minimal/claude/hooks/`) — Standard layers over Minimal, so an installed tree
+> has all four side by side, but in the KIT SOURCE those two files live one tier down. Listed here
+> because this README documents the full installed hook surface.
+
 ## Prerequisites
 
 - **`bash`** — hooks use `#!/usr/bin/env bash` (bash 3.2+, i.e. stock macOS bash works).

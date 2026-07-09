@@ -17,7 +17,7 @@ and reversibly. **Do not summarize the kit; run the install.**
 - **Consent-gated.** Read-only detection first. Then show a **dry-run plan** of every file you would create
   or merge. Write nothing until the user says yes.
 - **Never clobber.** An existing `CLAUDE.md` / `.claude/settings.json` / `.claude/*` is backed up,
-  marker-blocked (`<!-- kit:start -->` … `<!-- kit:end -->`), and deep-merged (union permissions, append hook
+  marker-blocked (`<!-- kit:start (fieldbook <kit-version>) -->` … `<!-- kit:end -->`), and deep-merged (union permissions, append hook
   arrays) — shown as a diff, applied only on an explicit yes.
 - **Manifest as-you-go.** Record every action — action (create/merge) · sha256 · backup-path, plus
   kit-version · profile · stack — to `.agent-docs/.kit-manifest.json` **as it happens**. This is what makes

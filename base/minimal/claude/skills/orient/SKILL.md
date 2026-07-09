@@ -1,15 +1,29 @@
 ---
 name: orient
-description: Read .agent-docs/now/handoff.md and surface current session state. Use at session start, after time away, or when reorienting ("where are we?"). Verifies the handoff isn't stale against git reality and runs a quick state-file health sweep (the folded-in /status check).
+description: Read .agent-docs/now/handoff.md and surface current session state. Use at session start, after time away, or when reorienting ("where are we?"). Pulls live git state at invocation, verifies the handoff isn't stale against git reality (code ahead of docs → trust the code), and runs a quick state-file health sweep (the folded-in /status check).
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [skill, lifecycle, orient]
 ---
 
 # /orient — Surface current session state from handoff
 
 Single-entry session orientation: read the curated bridge, verify it against reality, and surface a ~12-line brief. Folds in the `/status` quick-health sweep so there is ONE orientation skill, not two.
+
+---
+
+## Live git state (captured at invocation)
+
+Recent commits:
+
+!`git log --oneline -10 2>/dev/null || echo "(no git history)"`
+
+Working tree:
+
+!`git status --short 2>/dev/null || echo "(not a git repo)"`
+
+---
 
 ## 1. Read the handoff
 
@@ -22,9 +36,11 @@ If missing:
 ## 2. Check staleness vs reality
 
 - `last-modified` field. If > 24h old, flag prominently.
-- `git status -s` and `git log --oneline -3` — verify git state matches the handoff's claims.
+- The live git state above (captured at invocation) — verify it matches the handoff's claims.
 - If the session touched runtime-facing code (the app, a service, a CLI), a quick check that the claimed state holds (e.g. the last `{{BUILD_CMD}}` / `{{TEST_CMD}}` baseline the handoff cites is still current).
 - If any contradiction exists, surface it BEFORE acting on the handoff's "immediate next action."
+
+**Trust the code.** When code and docs disagree — the tree/commits above show work the handoff never mentions, or a step the handoff claims is pending already exists on disk — the docs are STALE, not the code. Trust the code, say so explicitly in the brief, and offer to run `/handoff` to true the docs up BEFORE acting on the handoff's Immediate Next Action.
 
 ## 3. Read supporting docs (in this order)
 
@@ -48,7 +64,7 @@ A fast, no-deep-analysis health pass over the durable state surfaces — flag dr
 - **Active open questions** that gate forward motion (typically 1-3 `OQ-NNN` from `open-questions.md`)
 - **Active work-unit(s)**: the `WU-NNNN` in flight
 - **Staleness / health flags** if any (from §2 + §3.5) — incl. "a `/sitrep` post-dates the handoff" if so
-- **Recent commits**: 3-5 lines from `git log --oneline`
+- **Recent commits**: 3-5 lines from the live git state above
 
 End with: "Ready to proceed with the immediate next action, or refresh state first via `/handoff` or `/flush`?"
 
@@ -66,4 +82,4 @@ End with: "Ready to proceed with the immediate next action, or refresh state fir
 
 ## Design rationale
 
-The session-lifecycle contract lives in `standing-rules-core.md` (§Context lifecycle) and `CONVENTIONS.md` (§6 — the checkpoint contract `/sitrep` writes and `/handoff` consumes). Orientation is one skill, not two: the standalone quick-health `/status` check is folded into §3.5 above.
+The session-lifecycle contract lives in `standing-rules-core.md` (§Context lifecycle) and `CONVENTIONS.md` (§6 — the checkpoint contract `/sitrep` writes and `/handoff` consumes). Orientation is one skill, not two: the standalone quick-health `/status` check is folded into §3.5 above. Live git state is pulled at invocation via the shell-interpolation blocks at the top, so the §2 staleness check compares the handoff against current reality rather than a snapshot — and the trust-the-code rule gives that comparison a precedence: the working tree is ground truth, the docs are the map.

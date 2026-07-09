@@ -1,9 +1,9 @@
 ---
 name: kit-doctor
-description: Re-runnable Fieldbook health check. Verifies the Claude Code version against the kit's assumptions, that the hooks fire and core.hooksPath is set, that jq/python3/stat are present, that the doc-schema + index lint are clean, and that the install manifest matches what's on disk (flagging drift/missing files). Reports findings and SUGGESTS fixes but mutates nothing without consent. Use when hooks seem inert, after a Claude Code update, after a fresh clone, or any time you want to confirm the install is still live and wired.
+description: Re-runnable Fieldbook health check. Verifies the Claude Code version against the kit's assumptions, that the hooks fire and core.hooksPath is set, that every hook script has a tracked settings.json registration (and every registration a script), that jq/python3/stat are present, that the doc-schema + index lint are clean, and that the install manifest matches what's on disk (flagging drift/missing files). Reports findings and SUGGESTS fixes but mutates nothing without consent. Use when hooks seem inert, after a Claude Code update, after a fresh clone, or any time you want to confirm the install is still live and wired.
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [skill, lifecycle, kit, health-check, manifest]
 ---
 
@@ -66,12 +66,12 @@ claude --version 2>/dev/null || echo "(couldn't read Claude Code version)"
 for t in bash git jq python3 stat; do
   command -v "$t" >/dev/null 2>&1 && echo "PASS $t" || echo "WARN $t missing"; done
 command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 \
-  || echo "WARN no sha256sum/shasum — manifest hash checks (§6) limited"
+  || echo "WARN no sha256sum/shasum — manifest hash checks (§8) limited"
 ```
 
 - `bash`/`git` missing → **FAIL** (the kit can't operate).
 - `jq` missing → **WARN**: all four hooks no-op silently; enforcement is off until installed.
-- `python3` missing → **WARN**: the doc-schema lint (§5) can't run.
+- `python3` missing → **WARN**: the doc-schema lint (§7) can't run.
 - `stat` — only WARN if BOTH GNU (`stat -c %Y`) and BSD (`stat -f %m`) forms fail.
 
 ### 4. Hooks are wired AND fire
@@ -98,7 +98,43 @@ A missing event on a Standard+ install ⇒ the merge dropped it; suggest re-runn
 gate that won't deny with `jq` present ⇒ the assembly is broken; suggest re-assembling (never
 hand-editing) `pretooluse-safety-gates.sh`.
 
-### 5. `core.hooksPath` set (the fresh-clone-inert trap)
+### 5. Hook scripts registered (script present ⇄ registration present)
+
+§4 checks the events the kit expects; this check goes the other way — a script that sits under
+`.claude/hooks/` with no registration in the **tracked** `.claude/settings.json` never fires, and
+scripts-present-but-unregistered is the classic hand-seeded-repo failure: the scripts were copied over
+but the registrations lived in someone's `settings.local.json` (gitignored — a clone never gets it) or
+were never committed, so every gate is silently off while the tree *looks* fully installed. The
+install-time smoke test only covers fresh concierge installs; this is the re-runnable check that
+catches the hand-seeded case.
+
+```bash
+# Forward: every executable hook script must be reachable from a TRACKED caller.
+# settings.local.json does NOT count — it is gitignored and a clone never gets it.
+for f in .claude/hooks/*; do
+  [ -f "$f" ] && [ -x "$f" ] || continue
+  base=$(basename "$f")
+  case "$base" in install-hooks.sh) continue;; esac   # operator-run bootstrap, not an event hook
+  if grep -q "$base" .claude/settings.json 2>/dev/null; then echo "PASS registered: $base"
+  elif grep -rl "$base" .githooks .claude/hooks --exclude="$base" 2>/dev/null | grep -q .; then
+    echo "PASS invoked indirectly (helper): $base"
+  else echo "FAIL script present, never fires: $base"; fi
+done
+
+# Inverse: a registration pointing at a script that isn't there (or isn't executable).
+grep -o '\.claude/hooks/[^" ]*' .claude/settings.json 2>/dev/null | sort -u | while read -r p; do
+  [ -f "$p" ] || { echo "FAIL registration points at missing script: $p"; continue; }
+  [ -x "$p" ] || echo "WARN registered but not executable: $p — chmod +x"; done
+```
+
+- Script referenced nowhere tracked → **FAIL** "script present, never fires" — fix: register it in
+  `.claude/settings.json` (re-run the merge step, or copy the wiring block from the kit's settings
+  template) or remove the script; a dead script is drift bait either way.
+- Registration pointing at a missing script → **FAIL**: the event fires into nothing — restore the
+  script (from the kit source or `/kit-upgrade`) or drop the stale registration.
+- Registered but not executable → **WARN**: `chmod +x` (offered in §Report).
+
+### 6. `core.hooksPath` set (the fresh-clone-inert trap)
 
 ```bash
 [ "$(git config --get core.hooksPath 2>/dev/null)" = ".githooks" ] \
@@ -110,7 +146,7 @@ This is the check that most often fails on a fresh clone: the tracked `.githooks
 is pointed at them, and it's a per-clone LOCAL setting that no commit can carry. Fix (offered in
 §Report): `bash .claude/hooks/install-hooks.sh`.
 
-### 6. Doc-schema + index lint clean
+### 7. Doc-schema + index lint clean
 
 ```bash
 if command -v python3 >/dev/null 2>&1 && [ -f .claude/hooks/lint-docs.py ]; then
@@ -122,7 +158,7 @@ Rule 13 (index completeness) is the hook-enforced one; any FAIL there means a di
 from disk (add/retire a doc without updating its index). Staleness (rule 12) is WARN-only — a stale
 `now/*` is a nudge, not a failure. Report the linter's own summary line verbatim.
 
-### 7. Manifest matches disk
+### 8. Manifest matches disk
 
 For each file the manifest records, confirm it still exists and (for `kit-owned`, unmerged files) note
 whether its hash still matches — a mismatch isn't a fault, it means the colleague edited it (useful to

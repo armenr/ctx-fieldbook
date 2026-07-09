@@ -2,6 +2,7 @@
 provenance: kit-template
 status: accepted
 created: 2026-07-03
+last-modified: 2026-07-09
 related: [0001-in-repo-context-system, 0002-session-lifecycle-skills]
 tags: [meta, framework, dispatch, multi-agent]
 ---
@@ -34,8 +35,22 @@ that an independent pass immediately fails is a recurring, expensive failure.
   bridge is the system's single point of failure and does not survive a different
   harness. The durable *role contract* (strategy / execution separation with
   independent verification) is kept; the copy-paste mechanism is dropped.
+- **A military operations-order command vocabulary.** Rejected: the ceremony and
+  jargon add no mechanism a plain wave-plan → charter decomposition lacks, and it
+  obscures the one thing that matters — a fenced, file-disjoint, verifier-gated
+  work-spec. (Instructive: this framework performed the same de-militarization on
+  its own terms when it was extracted for reuse.)
 - **One orchestrator + schema'd sub-agents + dynamic workflows, with the verifier
   realized as a clean-context gate stage.** Chosen.
+
+## Prior art / reference
+
+Fork-join / map-reduce orchestration for the fan-out; work-partitioning over
+disjoint ownership sets for collision safety; maker-checker separation of duties
+(from security and financial controls) and independent code review for the
+verifier-never-builder constraint. Where the harness persists and replays each
+dispatch verbatim on retry/resume, that persistence mechanism is off-the-shelf —
+the charter schema and the gate-stage placement are the bespoke parts.
 
 ## Decision
 
@@ -49,7 +64,7 @@ that an independent pass immediately fails is a recurring, expensive failure.
   callers, an invariant restated across a write path and its recovery path, or any
   `twin:` / `claim:` REVISIT site (ADR-0007). The orchestrator VERIFIES file-
   disjointness before launching a parallel wave.
-- **Before dispatch:** state reconnaissance (drift vs the base commit).
+- **Before dispatch:** read-only state reconnaissance (drift vs the base commit).
   **After a builder returns:** brief-back verification (catch charter
   hallucination). **Before the operator commits:** adversarial plan-review —
   applied to *designs*, not just code (a design reviewed only by its author is
@@ -58,7 +73,9 @@ that an independent pass immediately fails is a recurring, expensive failure.
   workflows**; the **clean-context verifier is a workflow gate stage** with no
   authorship stake. The persisted charter is ground truth — no copy-paste relay,
   and a retry replays the persisted charter verbatim rather than reconstructing it
-  from memory.
+  from memory. **No sub-agent commits or merges** — the orchestrator is the sole
+  serial integration + adjudication point; a builder discovery that needs a call
+  becomes an `OQ-` or a `reviews/` finding for the operator.
 
 ## Consequences
 

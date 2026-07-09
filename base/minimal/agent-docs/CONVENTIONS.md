@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [meta, schema, conventions]
 related: [index, glossary, CONVENTIONS-full-addendum]
 ---
@@ -76,7 +76,8 @@ where a dir's template mandates it (`now/lessons/`, `lessons/archive/`).
 | `CONVENTIONS.md` · `glossary.md` · `charter.md` · `log.md` · root `index.md` | This schema · jargon · mission · append-only journal · directory-level catalog | `log.md` APPEND-ONLY; rest UPDATE-IN-PLACE | `log.md`/root `index.md` unbounded; the rest 100–400 lines. |
 | `<dir>/index.md` | Per-dir routing catalog (§7.1) | UPDATE-IN-PLACE (same change as any doc add/retire in the dir) | ~150 lines, keep routable. |
 
-**Full profile adds** `research/`, dispatch-charters (`dispatch/`), `traceability/`,
+**Standard profile adds** `reviews/` — typed `REV-NNN` review reports with a ledger-table `index.md`
+(§7.4). **Full profile adds** `research/`, dispatch-charters (`dispatch/`), `traceability/`,
 `runbooks/`, `incidents/`, `experiments/` — see the addendum. **No new top-level category without an
 ADR justifying it.** `_archive` snapshots (whole-corpus ejections) live OUTSIDE `.agent-docs/` and
 are referenced only by `archived-from:` (§7.3).
@@ -126,6 +127,26 @@ off) · `llm-draft` (not yet reviewed — treat as draft) · `llm-autonomous` (u
 review). **Rule:** ADRs at `status: accepted` may NOT be `llm-draft`/`llm-autonomous` —
 `llm-reviewed` or `human` minimum.
 
+**Claim-level truth-status (veracity).** `provenance:` rates a DOC's trust; truth-status rates a
+CLAIM's. Docs mix two kinds of statement:
+- **record-fact** — *"ADR-0012 decided X."* A fact about the record; faithful capture suffices.
+- **reality-claim** — *"X is implemented and wired."* True only if reality agrees — verified against
+  ground truth (code, tests, a real run), never against the documents. Fidelity ≠ veracity: a
+  faithful copy of a false record launders a falsehood behind a citation.
+
+Every reality-claim carries an inline truth-status marker:
+- `[code-verified]` — confirmed against the code / a passing test / a real run; MUST cite the
+  evidence (§7.3 — a symbol trace, a test name, a command output).
+- `[claimed-unverified]` — a record asserts it; not yet checked. **The mandatory default for every
+  unchecked reality-claim — never presented as established fact.**
+- `[contradicted-by-code: <what the code actually shows>]` — the caught falsehood. Never silently
+  dropped: it stays marked AND spawns an `OQ-NNN` (§5).
+- `[historical as-of YYYY-MM-DD]` — true at the record's date; may not reflect current state.
+
+This is the doc-level half of ONE truth discipline; the code-level half is the IMPL→WIRED
+reachability bar (`.claude/rules/standing-rules.md`; Full addendum §C). Same rule both places:
+verify against ground truth, not against assertions.
+
 **`status:` for ADRs** — `proposed` · `accepted` · `pending` (stub; needs `pending-on: [...]`) ·
 `deferred` (stub; needs `deferred-because: "..."`) · `rejected` · `superseded` (needs
 `superseded-by:`) · `deprecated`. **For non-ADRs (optional):** `active` (default) · `draft` ·
@@ -160,6 +181,8 @@ traceability — cross-references cite the ID, not a body excerpt (progressive-d
 | `OQ-NNN` | **Open question** — single source, reference-by-number, inline-RESOLVED threading | `OQ-NNN` | `now/open-questions.md` | open → RESOLVED (resolution cites the ADR/WU that closed it) |
 | `LP-NNN` | **Lesson / near-miss** — a typed entry in the append-only lessons ledger | `LP-NNN` | `lessons/` | seedling → budding → evergreen; active → superseded |
 
+**Standard profile adds** `REV-NNN` — typed review report, one per review pass; lives in `reviews/`;
+lifecycle: open findings → all dispositioned; 3-digit is canonical (the OQ/LP ledger family) — see §7.4.
 **Full profile adds** `FR-NNNN` (dispatch-charter), `RV-NNN` (revisit anchor), `R-NNNN` (research
 investigation), `INC-NNN` (incident) — defined in the addendum.
 
@@ -187,6 +210,13 @@ investigation), `INC-NNN` (incident) — defined in the addendum.
   (never a strawman), and **(c) the flip-condition** — the goal / evidence / constraint that would
   reverse it (the pre-written trigger for a future reversal). Rule of thumb: *if the conversation that
   produced the decision was more insightful than the ADR, the ADR is not done.*
+- **Veracity gate on promotion (§2).** `proposed → accepted` requires the ADR's load-bearing
+  reality-claims to be `[code-verified]`. A `[contradicted-by-code:]` claim gets an
+  `## Open reconciliation` subsection + a new `OQ-NNN` — **never a silently picked winner**; the ADR
+  stays `proposed` until reconciled.
+- **Consult the record before reopening.** Reopening any settled decision starts by reading its ADR —
+  the alternatives, the deciding axis, the flip-condition — and requires genuinely NEW information
+  (something that meets the flip-condition or was never on the table), not re-litigation.
 
 **ADR body shape:** Context (what forced it) → Alternatives Considered (options + why rejected /
 superseded-but-instructive + **the deciding axis + a runner-up steelman + the flip-condition**) → Prior
@@ -258,6 +288,17 @@ profile realizes this as a verifier gate stage keyed to the WU (see the addendum
   never bulk-loaded. STALE/archival state is front-matter (`status` + banner on archive move), never
   free-text in the body.
 
+### 7.4 Typed review ledger (`reviews/`) — Standard profile adds
+
+Every review pass (adversarial design review, security red-team, code review, a verifier gate) that
+returns findings writes a durable `REV-NNN` report to `reviews/`, where **each finding carries a
+stable id + a disposition + a test-obligation** (the named test that binds the finding, or `unbound`
+→ a named owner) — so a review's findings become a test-mappable ledger instead of dissolving into
+log prose. `reviews/index.md` is a ledger TABLE (entries carry status; route by status first). The
+disposition set and the every-severity rule live in `.claude/rules/standing-rules.md` (capture ALL
+review feedback) — this section adds the durable home, not a second statement of that contract. See
+`templates/review-template.md`.
+
 ---
 
 ## 8. Scaffolding-as-versioned-template
@@ -284,8 +325,9 @@ Optional body — one or two lines of context. Reference the WU.
 
 **Op vocabulary (core):** `ingest` (new doc) · `decision` (ADR status change) · `memory` (new
 gotcha) · `work` (commands run / code changed) · `checkpoint` (sitrep written) · `lesson` (lessons
-ledger entry) · `supersede` (doc → archive w/ named successor) · `lint`. The Full profile adds
-`dispatch` · `research` · `incident` · `dogfood`.
+ledger entry) · `supersede` (doc → archive w/ named successor) · `lint`. The Standard profile adds
+`review` (typed review report filed, §7.4); the Full profile adds `dispatch` · `research` ·
+`incident` · `dogfood`.
 
 ---
 
@@ -308,7 +350,8 @@ ledger entry) · `supersede` (doc → archive w/ named successor) · `lint`. The
 11. Date-prefixed filenames (checkpoints/incidents/experiments) match the date format. *(ADVISORY)*
 12. `now/` files `last-modified` within 7d (warn at 7, fail at 90). *(ADVISORY)*
 13. **Index completeness (HOOK-ENFORCED):** every populated content dir has an `index.md`; its
-    `` `file.md` `` references match the on-disk set (no unindexed, no phantom).
+    references — backtick `` `file.md` `` tokens or in-dir markdown links `[label](file.md)` — match
+    the on-disk set (no unindexed, no phantom). Anchored links (`file.md#section`) are not matched.
 14. **Checkpoint integrity:** files in `checkpoints/` contain all ten numbered §6 points. *(ADVISORY)*
 15. **WU resolution:** a `work-unit:` value resolves to a known WU in `now/work-plan.md`. *(ADVISORY)*
 

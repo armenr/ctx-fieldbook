@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [concierge, merge, never-clobber, manifest, rollback]
 related: [scaffold-plan, interview, profiles]
 ---
@@ -20,6 +20,14 @@ without a backup, a shown diff, and a per-file explicit yes. One blanket Q6 "go"
 each clobbering MERGE is surfaced and confirmed on its own.
 
 ---
+
+> **Mechanical executor.** The write steps in §1–§2 are implemented by `concierge/merge-tool.py`
+> (python3 stdlib, kit-side only — never installed into the target). The concierge stays the
+> consent layer: compute the plan, show the diff (`--dry-run`), get the explicit yes, THEN invoke
+> the tool as the write primitive. The tool emits a per-action JSONL log (`action · path ·
+> sha256-before/after · backup · ts`); the concierge composes the structured
+> `.kit-manifest.json` `files[]` entries (§4) from that log — the JSONL is evidence, the manifest
+> is the record.
 
 ## 1 · Existing `CLAUDE.md` → backup + marker block + diff + yes
 
@@ -44,6 +52,22 @@ their own instructions), we ADD to it, never overwrite it.
 5. **Diff + yes.** Show the unified diff of what lands between the markers; get an explicit yes before
    writing. On no → adjust or skip the CLAUDE.md step (the rest of the install can still proceed; note
    the constitution as un-wired in the manifest).
+6. **Version matching.** The `kit:start` line carries the kit version, which changes across upgrades —
+   so any operation that must FIND the kit's block (idempotency check, upgrade, uninstall) matches on
+   the `kit:start` prefix, e.g. `<!-- kit:start \(fieldbook [^)]*\) -->`, never on an exact one-version
+   string. When rewriting the block, stamp the current `kit-version.txt` value into the new start marker.
+
+### Foreign marker blocks
+
+Other tools use the same trick: the friend's `CLAUDE.md` may already contain marker pairs that are not
+ours (any `<!-- something:begin -->` / `<!-- something:end -->` or similarly-fenced region whose tokens
+aren't the kit's own `kit:start`/`kit:end`). Those blocks are somebody else's managed seam:
+
+- **Preserve byte-verbatim.** Never merge into, reflow, or edit inside a foreign block.
+- **Never count as kit-owned.** They don't enter the manifest, and uninstall never removes them —
+  uninstall strips only the kit's own `kit:start`…`kit:end` region.
+- **Insert after.** When appending the kit block (§1 step 3), place it AFTER any existing foreign
+  blocks, not between a foreign pair or above one.
 
 ---
 
@@ -111,15 +135,20 @@ record.
   "files": [
     {
       "path": "<dest, relative to target>",
-      "action": "create|merge|skip",
-      "source": "<kit source, relative to kit root>",
+      "action": "create|merge|skip|adopt",
+      "source": "<kit source, relative to kit root | null for adopted non-kit-origin files>",
       "sha256": "<sha256 of the installed file>",
-      "backup": "<backup path | null>"
+      "backup": "<backup path | null>",
+      "keep-local": "<true ONLY on documented local-override rows; omit otherwise>"
     }
   ],
   "git": { "hooksPath_set": true, "hooksPath_prev": "<prior value | null>" }
 }
 ```
+
+**This block is the CANONICAL manifest row schema** — scaffold-plan, kit-upgrade (including its
+retro-adoption backfill), kit-doctor, and uninstall all read/write THIS shape; the field is `backup`
+(never `backup-path`), and `adopt` is the action for retro-adopted files.
 
 ### The five modes (all read the manifest first)
 

@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [meta, schema, conventions, full-profile]
 related: [CONVENTIONS, index, glossary]
 ---
@@ -109,17 +109,29 @@ just code.** The Full profile realizes it operationally.
 **Dispatch-charter (`FR-NNNN`).** A `WU` is decomposed into **one-file-one-owner** charters, each
 recalibrating the parent plan's stale scope assumptions against the **live tree** (survey first, then
 charter) and naming its **wiring-proof target** (the production entrypoint the work must be reachable
-from, §C). Two charters in the same wave must not own the same file.
+from, §C). Two charters in the same wave must not own the same file. **A charter whose single
+purpose needs an "and" is two charters.**
 
-**Wave-plan.** The parent decomposition. Legs are sequenced into **waves by file-overlap** so
-parallel legs touch disjoint files; the orchestrator verifies file-disjointness *before* launching a
-parallel wave.
+**Wave-plan.** The parent decomposition — a **DAG of units, not a flat list**; a wave is one
+topological layer of that DAG. Legs are sequenced into **waves by file-overlap** so parallel legs
+touch disjoint files; if file-disjointness cannot be *proven* before launch, the legs are serial.
+The orchestrator verifies file-disjointness *before* launching a parallel wave. Delicate or
+destructive surfaces (a shared contract, a generated artifact, anything expensive to roll back)
+sequence LAST — into a later wave, behind proven legs, never in parallel with them.
 
 **Verifier gate stage.** Independent verification is a **clean-context reviewer with no authorship
 stake, run as a gate stage** before the design/code proceeds: it re-derives the claim (especially
 **production-reachability**, §C) against the live tree, independently of the builder's assertion. The
 executor never audits its own work. Reviews are keyed to the `WU`/`FR` they gate. **This applies to
-DESIGNS too** — `design → adversarial-review` BEFORE implementation, not only after.
+DESIGNS too** — `design → adversarial-review` BEFORE implementation, not only after. An adversarial
+design review must **trace the load-bearing library source at `file:line`** — cite the dependency's
+actual code, not its docs (a doc-derived claim is a `[claimed-unverified]` reality-claim, core §2).
+
+**Mandatory final verification leg.** Every wave closes with a final leg that reproduces the
+acceptance gates FIRSTHAND against the merged tree — re-running them itself, not trusting the builders'
+reports — and re-derives production-reachability (§C) before merge. The orchestrator does not merge
+until that leg reports clear. It is standing infrastructure of every decomposition, not an optional
+step.
 
 **Dispatch persistence is the tooling's job.** The durable **principle** is: the persisted brief is
 ground truth — never reconstruct a prompt from memory on retry. Let the dispatch tooling persist and

@@ -2,9 +2,11 @@
 Per-dir index template per CONVENTIONS.md §7.1 (route, don't browse) + §8 (versioned templates).
 Instantiate to `<dir>/index.md` — exactly ONE per populated content dir.
 MAINTENANCE RULE (hook-enforced, §7.1): adding/retiring ANY doc in this dir updates this index in the
-SAME change. The `` `file.md` `` references here MUST match the on-disk set — no unindexed, no phantom.
+SAME change. References here — backtick `` `file.md` `` tokens OR in-dir markdown links `[label](file.md)`
+— MUST match the on-disk set: no unindexed, no phantom (anchored `file.md#section` links are not matched; lint rule 13).
 Entry shape = what-it-holds · Open when: · Carry-away:. Group by QUESTION / JOB, not alphabet.
 Carry-away claims MUST be traceable to the source doc — a wrong carry-away is worse than none.
+Ledger-table dirs (e.g. `reviews/`) carry a STATUS per entry alongside the carry-away — route by status first.
 Root `.agent-docs/index.md` is directory-level ONLY (list dirs, not docs).
 Delete this comment block + the inline guidance once filled in.
 -->

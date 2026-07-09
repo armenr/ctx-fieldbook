@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-09
 ---
 
 # {{PRIMARY_LANGUAGE}} quality-gate rules (concierge-filled)
@@ -19,6 +20,12 @@ The stack binding for the generic `{{LINT_CMD}} / {{FMT_CMD}} / {{TEST_CMD}} / {
 
 ## Lint & format gates (strict by decision, not preference)
 
+- **Versions-check first — the gate FAILS on toolchain drift.** Before any other stage runs, verify
+  the active toolchain matches the project's pins, and FAIL on any mismatch — a later stage that goes
+  green under a toolchain the pins don't describe is vacuously green, not passing.
+  > Fill: name the version-print command(s) for your compiler/interpreter and gate tools, and the pin
+  > file(s) they must match (a toolchain file, a manifest's language-version field, a lockfile's
+  > resolved tool versions).
 - **`{{LINT_CMD}}` must pass — warnings are errors.** A lint finding is a build failure, not a
   suggestion. `{{FMT_CMD}}` (check mode) must pass too. The pre-commit hook runs both; **never bypass a
   failing gate** — investigate it.

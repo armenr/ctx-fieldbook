@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [concierge, scaffold, deterministic, install]
 related: [interview, profiles, parameters, merge-strategy]
 ---
@@ -68,13 +68,25 @@ Copy the profile's `.agent-docs/` payload (additively — `profiles.md` §1–3 
       Minimal keeps `now/ decisions/ lessons/`; Standard also keeps `reference/ checkpoints/ memories/`;
       Full keeps everything. Prune before writing.
 1.2 **Standard payload** (`base/standard/agent-docs/`, if profile ≥ standard): COPY-VERBATIM
-    `checkpoints/index.md`, `memories/index.md`, and `reference/index.md` (all ship as seed stubs —
-    the root catalog routes to `reference/` at Standard, so its index must be present for rule 13).
+    `checkpoints/index.md`, `memories/index.md`, `reference/index.md`, and `reviews/index.md` (all ship
+    as seed stubs — the root catalog routes to `reference/` and `reviews/` at Standard, so their indexes
+    must be present for rule 13). Also COPY-VERBATIM `templates/review-template.md` into the already-
+    installed `templates/` dir (one `REV-NNN` report per review pass; no tokens).
+    - **`templates/index.md` catalog row for `review-template.md`:** the review template joins the
+      Minimal `templates/` dir, so its catalog row must be added to `templates/index.md` in the same
+      change (rule 13 index-completeness). *No Standard `templates/index.md` fragment ships yet to carry
+      that row — see the openIssue; until it does, the concierge appends the row by hand.*
 1.3 **Full payload** (`base/full/agent-docs/`, if profile == full): FILL `CONVENTIONS-full-addendum.md`;
-    COPY-VERBATIM the six Full dir `index.md` files (`traceability/ dispatch-charters/ research/
-    runbooks/ incidents/ experiments/`); FILL the Full `templates/*` (`dispatch-charter-template.md` etc.)
-    into `templates/`; **merge** the Full `templates/index.md` catalog INTO the already-installed Minimal
-    `templates/index.md` (append the Full section — do not overwrite the Minimal catalog).
+    FILL `reference/work-discipline.md` (gate cmds + `{{CODE_INTEL_TOOL}}`) into the already-installed
+    Standard `reference/` dir — the gated-delivery standard-of-record (add its row to `reference/index.md`
+    in the same change, rule 13); COPY-VERBATIM the six Full dir `index.md` files (`traceability/
+    dispatch-charters/ research/ runbooks/ incidents/ experiments/`); FILL the Full `templates/*`
+    (`dispatch-charter-template.md` etc.) into `templates/`; **merge** the Full `templates/index.md`
+    catalog INTO the already-installed Minimal `templates/index.md` (append the Full section — do not
+    overwrite the Minimal catalog).
+    - **`dispatch-charter-template.md` is v2.0.0 compact shape:** Part A (work-spec) is the whole
+      charter for most dispatches; Part B (lifecycle sections) is opt-in for load-bearing / multi-wave
+      work. FILL touches both parts; the instantiating author deletes Part B when it is not needed.
 
 **Determinism note:** within a phase, process dirs in sorted order and files in sorted order, so the
 dry-run plan and the manifest are stable across runs.
@@ -183,7 +195,7 @@ a subdirectory CLAUDE.md loads lazily — only the project-root file is reliably
     Do NOT ship the kit's OWN root `CLAUDE.md` (the concierge bootstrap) to the target — it is the
     installer, not the constitution.
 5.2 If `<target>/CLAUDE.md` **exists** → NEVER clobber. `merge-strategy.md` §claude-md: back up + wrap
-    the kit content in `<!-- kit:start -->` / `<!-- kit:end -->` markers + append/insert + diff +
+    the kit content in `<!-- kit:start (fieldbook <kit-version>) -->` / `<!-- kit:end -->` markers + append/insert + diff +
     explicit yes.
 5.3 If absent → CREATE it (consented at Q6). FILL tokens.
 
@@ -222,7 +234,7 @@ a subdirectory CLAUDE.md loads lazily — only the project-root file is reliably
 
 ```
 0  preconditions + manifest header
-1  .agent-docs/  (minimal → [standard] → [full], additive; root index.md row-prune; reference/ stub)
+1  .agent-docs/  (minimal → [standard] → [full], additive; root index.md row-prune; reference/ + reviews/ seeds)
 2  .claude/ rules + skills(bare-name) + non-assembled hooks (+ chmod)
 3  assemble pretooluse-safety-gates.sh  (base + stack fragment + Q5 rules; bash -n)   [Standard+]
 4  .claude/settings.json  (fill → prune hooks to profile → union stack allowlist → validate JSON)

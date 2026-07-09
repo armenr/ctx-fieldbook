@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [concierge, profiles, payload-map]
 related: [interview, scaffold-plan, parameters, merge-strategy]
 ---
@@ -82,7 +82,9 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 |---|---|---|
 | `checkpoints/index.md` | `checkpoints/index.md` | verbatim |
 | `memories/index.md` | `memories/index.md` | verbatim |
-| `reference/index.md` | `reference/index.md` | **see gap note** — root `index.md` routes to it, but no `reference/index.md` ships in this build; concierge creates a stub `reference/index.md` so the row resolves |
+| `reference/index.md` | `reference/index.md` | seed stub; root `index.md` routes to `reference/` at Standard |
+| `reviews/index.md` | `reviews/index.md` | verbatim — the typed `REV-NNN` review-report ledger seed (0.2.0); root `index.md` routes to `reviews/` at Standard |
+| `templates/review-template.md` | `templates/review-template.md` | verbatim — one `REV-NNN` report per review pass; **its `templates/index.md` catalog row must ship** (see scaffold-plan §1.2 note) |
 
 ### `.claude/` (from `base/standard/claude/`)
 | Kit source | Installs to | Note |
@@ -116,7 +118,9 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 ### Enforcement at Standard
 - Everything from Minimal **plus** the PreToolUse safety gate, the doc-schema linter (`lint-docs.py`,
   blocking opt-in via pre-commit), the SubagentStart prefix, and the path-aware pre-commit dispatcher.
-- ID spine adds `LP` (lessons).
+- The typed review-report ledger (`reviews/`, `REV-NNN` + per-finding disposition + test-obligation) —
+  the durable home the findings-to-disk standing rule mandates.
+- ID spine adds `LP` (lessons) · `REV` (reviews).
 
 ---
 
@@ -128,13 +132,14 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 | Kit source | Installs to | Note |
 |---|---|---|
 | `CONVENTIONS-full-addendum.md` | `CONVENTIONS-full-addendum.md` | token-fill; references (never restates) the core |
+| `reference/work-discipline.md` | `reference/work-discipline.md` | token-fill (gate cmds + `{{CODE_INTEL_TOOL}}`); the gated-delivery standard-of-record (0.2.0) — a Full addition to the Standard `reference/` dir |
 | `traceability/index.md` | `traceability/index.md` | the IMPL→WIRED ledger surface |
 | `dispatch-charters/index.md` | `dispatch-charters/index.md` | dispatch-charter / wave-plan ledger |
 | `research/index.md` | `research/index.md` | pipeline dir routing |
 | `runbooks/index.md` | `runbooks/index.md` | |
 | `incidents/index.md` | `incidents/index.md` | |
 | `experiments/index.md` | `experiments/index.md` | |
-| `templates/dispatch-charter-template.md` | `templates/dispatch-charter-template.md` | token-fill (`{{WORKSPACE_LAYOUT}}`, `{{PANIC_EQUIVALENT}}`) |
+| `templates/dispatch-charter-template.md` | `templates/dispatch-charter-template.md` | token-fill (gate cmds, `{{WORKSPACE_LAYOUT}}`, `{{PANIC_EQUIVALENT}}`, `{{CODE_INTEL_TOOL}}`); **v2.0.0 compact shape** — Part A (work-spec) is the whole charter for most dispatches, Part B (lifecycle sections) is opt-in for load-bearing / multi-wave work |
 | `templates/research-synthesis-template.md` | `templates/research-synthesis-template.md` | |
 | `templates/runbook-template.md` | `templates/runbook-template.md` | |
 | `templates/incident-template.md` | `templates/incident-template.md` | |
@@ -163,6 +168,8 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 
 ### Enforcement at Full
 - The full gate set + the traceability ledger + (if opted) the revisit-lint pre-commit check.
+- The gated-delivery standard-of-record (`reference/work-discipline.md`) — maps the gate loop onto the
+  FR-charter lifecycle so a Full install has one definition of "done".
 - ID spine adds `FR` (dispatch-charter) · `RV` (revisit) · `R` (research) · `INC` (incident).
 
 ---

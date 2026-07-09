@@ -6,7 +6,7 @@ scalars from the interview. It is a POINTER constitution: it orients the agent a
 rules, then routes to .agent-docs/ for detail (progressive disclosure — the constitution stays short).
 
 If the target repo already has a CLAUDE.md, this content is spliced into a backed-up, marked block
-(<!-- fieldbook:start --> … <!-- fieldbook:end -->) per concierge/merge-strategy.md — never clobbered.
+(<!-- kit:start (fieldbook <kit-version>) --> … <!-- kit:end -->) per concierge/merge-strategy.md — never clobbered.
 Used by all profiles; the pointer is the same, only the .agent-docs/ surfaces it routes to differ.
 Delete this comment block when instantiating.
 -->

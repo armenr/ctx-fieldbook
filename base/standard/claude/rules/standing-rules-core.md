@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-09
 ---
 
 # Standing operational rules — core (always-on)
@@ -47,7 +48,9 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
 - **Lint is strict by decision, not preference.** Warnings are errors. Don't silence a lint without an
   explicit, justified, in-comment reason; in library code don't reach for `{{PANIC_EQUIVALENT}}` — return
   a typed error. No needless work to "make it compile."
-- **A behavior change OWES a test that would fail without it.** Tests-pass ≠ done; every behavior carries its falsifier.
+- **A behavior change OWES a test that would fail without it.** Tests-pass ≠ done; every behavior carries
+  its falsifier. And a fix's guard must be proven **NON-VACUOUS**: break the guard deliberately, watch the
+  control fail for the right reason, restore. A guard you have never seen fail is not yet a guard.
 - **IMPL → WIRED is the acceptance bar, not test-pass.** The most expensive recurring trap is code that
   compiles and passes tests but is never reachable from a production entrypoint. A unit of work is done
   only when a path traces from a real entrypoint (a `main()`, a served command) to the new code. **Prove
@@ -64,6 +67,13 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
   in conversation is DEAD at compaction. Write it where it belongs the moment you have it — a decision →
   an ADR (`decisions/`); a gotcha → a `memories/` claim; an investigation result → a checkpoint or
   `research/` track. Verdicts carry on-disk evidence (a `log.md` timestamp, a commit SHA, a command output).
+- **All durable knowledge lives IN-REPO — never in a harness- or user-local memory store.** Every durable
+  claim (a gotcha, an operator preference, a project fact, a ruling) goes into the version-controlled
+  `.agent-docs` system — `memories/` for claims, `lessons/` for patterns, ADRs for decisions, this file for
+  rules. Any harness-level or machine-local memory store holds ONLY a redirect pointer to this rule:
+  knowledge parked there is invisible to the repo, to other tools and operators, and dies with the machine.
+  Same locality for sub-agents — **never route a dispatched agent to memory tools**; equip search/read +
+  code-intel only, and durable findings travel back through the return schema to be filed here.
 - **Decision-rationale-with-alternatives, written BEFORE acting — capture the load-bearing WHY, not the
   verdict.** A non-trivial choice gets an ADR with a non-empty `## Alternatives Considered` field authored
   *before* the work, not reverse-engineered after — the rejected options + why are the value. "Chose X over
@@ -73,6 +83,9 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
   product rather than a reference architecture, we'd have chosen the other"). If the conversation that
   produced the decision was richer than the ADR, the ADR is INCOMPLETE. An ADR without the field is
   lint-incomplete.
+- **Consult the decision record before reopening ANY settled decision — and bring genuinely new
+  information.** The flip-condition is the pre-written trigger for a reversal; re-litigating a settled call
+  without new evidence, a changed goal, or a changed constraint burns the record's whole value.
 - **Capture ALL review feedback — every severity, never just the blockers.** When ANY review pass returns
   findings, EVERY finding gets a durable home AND an explicit disposition: `FIXED` · `DEFER` (+reason) ·
   `WONTFIX` (+reason) · `TRACKED` (→ a new `OQ-`). Minors and nits included. "CLEAN except a few nits" is
@@ -87,9 +100,21 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
   is a clean-context verifier sub-agent that re-derives the claim against the live tree with no authorship stake.
 - **This applies to DESIGNS, not just code.** Pattern: `design → split → adversarial-review` BEFORE
   implementation. A design reviewed only by its author is unreviewed.
+- **A capped or budget-limited audit run yields a LOWER BOUND, not a completed floor.** If the run stopped
+  on a cap (time, tokens, item count) rather than exhaustion, report "found ≥ N" — never "found all N".
+- **0/N findings refuted is a smell, not a triumph — check the refuter before celebrating.** A perfectly
+  clean adversarial pass is more often a broken or misaimed checker than a perfect artifact: confirm the
+  refuter actually ran, against the right tree, and could have failed.
 
-## Cycle start — sweep inbound references
+## Cycle start — scope recon outward, reference sweep inward
 
+- **Recon-first per work-unit — a READ-ONLY scope recon before authoring any build.** Before a work-unit's /
+  stage's build is authored, run a read-only scope recon (one parallelizable recon per unit, under the
+  dispatch contract) that recalibrates the unit's stale line/scope assumptions against the LIVE tree AND
+  returns its COMPLETE file-ownership set. The orchestrator VERIFIES cross-unit file-disjointness from
+  those sets BEFORE any parallel launch — a collision caught at recon costs one read; caught mid-build it
+  costs a track. **Treat any durable backlog as a DRAFT**: its claims (line numbers, finding completeness,
+  multi-site counts) are re-verified at point of use, never trusted — the backlog is a map, not the territory.
 - **Inbound-reference sweep at cycle start (the inward companion to scope-recon).** Before authoring a
   work-unit's / stage's build, scope-recon looks OUTWARD (what the WU touches); ALSO look INWARD — run
   `scripts/wu-refs.sh <WU/unit id> [stage]` to gather everything that references / awaits it across the
@@ -111,11 +136,38 @@ prompt + the return schema, every time.
   discovery, ambiguity, or temptation is recorded to a REQUIRED `discoveries[]` / `out_of_scope` field and
   NOT acted on. If the unexpected thing BLOCKS the task, the agent returns `status: blocked` and stops — it
   never invents a workaround or expands scope to get unblocked.
+- **Non-builder agents are READ-ONLY.** Recon, fixture, review, and verify agents never mutate the tree;
+  only ONE fenced build agent per track mutates.
+- **Parallel tracks run in isolated worktrees over pre-verified disjoint file ownership** — the ownership
+  sets come from the recon-first pass and the orchestrator verifies disjointness BEFORE launch, so tracks
+  cannot clobber each other mid-flight.
 - **No agent commits or merges.** The orchestrator is the sole, serial integration point; it reads every
   diff firsthand and an independent reviewer audits for scope-creep BEFORE any commit. Discoveries are the
   operator's to adjudicate.
+- **Pin the model tier on every dispatch — never silent-inherit the session model into fan-out.** A
+  dispatch that omits an explicit tier is a defect to fix, not run. Default to the standard/workhorse tier;
+  escalate to the deep tier ONLY where it demonstrably adds value (the hardest adversarial-verify / judge /
+  design stages) and with the justification stated; cheap mechanical stages may drop lower. (The
+  dispatch-charter template's `model-tier` hint is the per-charter home for this call.)
+- **Returns are structured and REQUIRE the honesty fields.** Every dispatch return carries: proof the
+  falsifier ran RED on the unmodified HEAD (for the right reason) · the guard's non-vacuous negative
+  control (broke it, watched the control fail, restored) · the IMPL→WIRED reachability proof · the
+  `discoveries[]` field (present even when empty) · a per-finding disposition for anything it reviewed.
+  A return missing these is incomplete, not done.
 - **Don't trust an agent's self-report** that it wrote/verified something — `ls`/grep the live artifact
   yourself; reproduce a relayed bug/finding firsthand against the live tree before filing or acting on it.
+
+### Fan-out failure modes — apply the mitigation on sight
+
+Each row is a recurrence-counted failure with a standing response. Don't re-derive the mitigation — the
+IF is the trigger to watch for, the THEN is the standing answer.
+
+| IF | THEN |
+|---|---|
+| Parallel heavy agents hit repeated **server-side rate-limit waves** | **SERIALIZE the heavy stage** (one at a time); keep lighter stages pipelined; resuming banks already-cached successes. Never hammer fresh parallel re-dispatches into an active wave; back off if a resume makes zero new progress. |
+| Multiple **heavy LOCAL builds** would run at once (distinct from the wave above — this is one machine's finite cores/disk) | **SERIALIZE the heavy build phases**; give each parallel-track worktree its own build/output dir; keep **at most 2 concurrent heavy streams** — three or more thrash and starve each other. |
+| Draft agents **write docs to disk AND return a placeholder/summary** in structured output (disk ≠ return → phantom or clobbered docs) | Use **RETURN-ONLY** draft prompts (no file tools); reconcile disk-vs-return **per-doc**; list-verify every claimed path; recover any placeholder'd doc from the agent's transcript. |
+| Agents **transiently error mid-run** | **RESUME the interrupted run** (replay what already succeeded, re-run only the failed legs) — do NOT re-dispatch fresh. |
 
 ## Context lifecycle
 

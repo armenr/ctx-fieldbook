@@ -31,8 +31,11 @@ is a ledger TABLE, not prose.** Schema authority: `../CONVENTIONS.md`; ID `FR-NN
 
 ## Entry purpose + naming
 
-- **Purpose:** a self-contained, single-owner dispatch charter; the persisted brief is ground truth
-  (no reconstruct-from-memory on retry).
+- **Purpose:** a self-contained, single-owner scoped work-spec. **When to file at all:** dispatch
+  persistence is the tooling's job — the run journal is the dispatch record; file a charter only when
+  a genuine scoped work-spec adds value beyond the prompt (load-bearing surface, multi-wave fence,
+  contested ownership). Most dispatches need only the template's compact Part A. Once filed, the
+  charter is ground truth (no reconstruct-from-memory on retry).
 - **Filename:** `dispatch-charters/YYYY-MM-DD-<wave>-<slug>.md` (or `FR-NNNN-<slug>.md`).
 - **Write-discipline:** APPEND-ONLY. Status lifecycle: `drafting → dispatched → in-remediation →
   certified → merged → rolled-back`.

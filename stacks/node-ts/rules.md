@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-09
 paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs", "**/tsconfig*.json", "**/package.json", "**/eslint.config.*"]
 ---
 
@@ -17,6 +18,11 @@ typescript-eslint, Prettier) — currency-check again before pinning versions.
 
 ## Type-check & lint & format gates (strict by decision, not preference)
 
+- **Versions-check first — the gate FAILS on toolchain drift.** Before any other stage runs, verify
+  the active toolchain matches the pins: `node --version` against `package.json#engines` / `.nvmrc`,
+  and the installed `typescript` / `eslint` / `prettier` against the lockfile's resolved versions. A
+  mismatch is a gate FAILURE, not a note — a `tsc` or `eslint` run that goes green under a toolchain
+  the pins don't describe is vacuously green, not passing.
 - **`tsc --noEmit` must pass with `strict` on.** In `tsconfig.json` set `"strict": true` (this turns on
   `noImplicitAny`, `strictNullChecks`, and the rest as one switch) and add the sharp edges strict does
   NOT include: `"noUncheckedIndexedAccess": true`, `"noImplicitOverride": true`,

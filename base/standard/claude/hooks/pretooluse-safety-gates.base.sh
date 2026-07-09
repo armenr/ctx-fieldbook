@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # pretooluse-safety-gates.base.sh — UNIVERSAL PreToolUse Bash safety gate (base layer).
-# provenance: kit-template · created: 2026-07-03
+# provenance: kit-template · created: 2026-07-03 · last-modified: 2026-07-09
 #
 # Reads stdin JSON per the Claude Code hook spec:
 #   { "tool_name": "Bash", "tool_input": { "command": "..." } }
@@ -25,6 +25,16 @@
 #    GNU-grep extensions that silently FAIL on BSD/macOS grep; POSIX word boundaries
 #    ([[:<:]] [[:>:]]) are BSD-only. Neither is portable, so boundaries are spelled out.
 # 3. Chain greps when two tokens must co-occur in any order.
+#
+# ── CWD assumption (rule 5) ────────────────────────────────────────────────────────────
+# Rule 5 reports this hook process's own pwd as the Bash tool's persisted shell cwd. That
+# holds when the harness spawns hooks in the tool shell's working directory; if a harness
+# version runs hooks from the project root instead, the injected cwd can be confidently
+# wrong. Cheap self-check: when CLAUDE_PROJECT_DIR is set and pwd falls outside it, the
+# label softens to "cwd (unverified)" — treat an unverified cwd as advisory, not ground
+# truth. Also: the cd-target resolution below NEVER executes command substitution sliced
+# from the agent's command — only tilde and simple-variable forms are expanded; anything
+# containing backticks or $( ) is left unresolved and reported as a raw string.
 set -euo pipefail
 
 # jq is required to parse the hook payload. If absent, degrade to allow-through rather
@@ -97,23 +107,60 @@ MUTATIVE_PATTERN='git +(add|clean|commit|rm|mv|reset|merge|rebase|cherry-pick|st
 if echo "$CMD" | grep -qE "${CSEP}(${MUTATIVE_PATTERN})"; then
   set +e
   PWD_NOW=$(pwd 2>/dev/null || echo "<pwd-failed>")
+  # Self-check the cwd assumption (see header): if CLAUDE_PROJECT_DIR is set and pwd is
+  # outside it, the harness may have run this hook from an unexpected directory — soften.
+  CWD_PREFIX="cwd"
+  if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
+    case "$PWD_NOW/" in
+      "${CLAUDE_PROJECT_DIR%/}/"*) ;;
+      *) CWD_PREFIX="cwd (unverified)" ;;
+    esac
+  fi
   INTENDED_CWD=""
+  CWD_NOTE=""
   if echo "$CMD" | grep -qE '^[[:space:]]*cd[[:space:]]+'; then
-    INTENDED_CWD=$(echo "$CMD" | sed -nE 's|^[[:space:]]*cd[[:space:]]+([^&|;]+).*|\1|p' | sed 's/[[:space:]]*$//' | head -1)
-    if [ -n "$INTENDED_CWD" ]; then
-      INTENDED_CWD=$(eval echo "$INTENDED_CWD" 2>/dev/null || echo "$INTENDED_CWD")
-      if [ "${INTENDED_CWD#/}" = "$INTENDED_CWD" ]; then
-        INTENDED_CWD="$PWD_NOW/$INTENDED_CWD"
-      fi
+    RAW_TARGET=$(echo "$CMD" | sed -nE 's|^[[:space:]]*cd[[:space:]]+([^&|;]+).*|\1|p' | sed 's/[[:space:]]*$//' | head -1)
+    # Strip one pair of matching surrounding quotes (a quoted cd target is common).
+    case "$RAW_TARGET" in
+      \"*\") RAW_TARGET="${RAW_TARGET#\"}"; RAW_TARGET="${RAW_TARGET%\"}" ;;
+      \'*\') RAW_TARGET="${RAW_TARGET#\'}"; RAW_TARGET="${RAW_TARGET%\'}" ;;
+    esac
+    # SAFE expansion only — no eval, nothing sliced from the agent's command may ever
+    # execute here. Handled: tilde, $VAR / ${VAR} (optional /suffix). Command substitution
+    # (backticks / dollar-paren) is never resolved: report the raw string instead.
+    case "$RAW_TARGET" in
+      '') ;;
+      *\`*|*\$\(*)
+        CWD_NOTE=" | cd target contains command substitution — NOT resolved; raw: ${RAW_TARGET}"
+        ;;
+      '~'|'~/'*)
+        INTENDED_CWD="${HOME}${RAW_TARGET#\~}"
+        ;;
+      *\$*)
+        VAR_NAME=$(printf '%s' "$RAW_TARGET" | sed -nE 's|^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(/.*)?$|\1|p')
+        VAR_TAIL=$(printf '%s' "$RAW_TARGET" | sed -nE 's|^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(/.*)?$|\2|p')
+        if [ -n "$VAR_NAME" ] && [ -n "${!VAR_NAME:-}" ]; then
+          INTENDED_CWD="${!VAR_NAME}${VAR_TAIL}"
+        else
+          CWD_NOTE=" | cd target uses a variable this hook cannot resolve; raw: ${RAW_TARGET}"
+        fi
+        ;;
+      *)
+        INTENDED_CWD="$RAW_TARGET"
+        ;;
+    esac
+    if [ -n "$INTENDED_CWD" ] && [ "${INTENDED_CWD#/}" = "$INTENDED_CWD" ]; then
+      INTENDED_CWD="$PWD_NOW/$INTENDED_CWD"
     fi
   fi
   if [ -n "$INTENDED_CWD" ] && [ -d "$INTENDED_CWD" ]; then
     EFFECTIVE_CWD="$INTENDED_CWD"
-    CWD_LABEL="cwd=${INTENDED_CWD} (via cd-chain from shell-cwd=${PWD_NOW})"
+    CWD_LABEL="${CWD_PREFIX}=${INTENDED_CWD} (via cd-chain from shell-cwd=${PWD_NOW})"
   else
     EFFECTIVE_CWD="$PWD_NOW"
-    CWD_LABEL="cwd=${PWD_NOW}"
+    CWD_LABEL="${CWD_PREFIX}=${PWD_NOW}"
   fi
+  CWD_LABEL="${CWD_LABEL}${CWD_NOTE}"
   BRANCH=$(git -C "$EFFECTIVE_CWD" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "<not-a-git-repo>")
   REPO_ROOT=$(git -C "$EFFECTIVE_CWD" rev-parse --show-toplevel 2>/dev/null || echo "<not-a-git-repo>")
   STATUS_COUNT=$(git -C "$EFFECTIVE_CWD" status -s 2>/dev/null | wc -l | tr -d ' ' || echo "?")

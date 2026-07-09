@@ -2,7 +2,7 @@
 provenance: kit-template
 template-version: 1.0.0
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [index, templates]
 related: [CONVENTIONS]
 ---
@@ -37,6 +37,12 @@ hand-copy an existing doc.**
 - 🔨 `lesson-template.md` — a lesson / near-miss in the append-only ledger (`lessons/`, `LP-NNN`).
   **Open when:** an error or near-miss teaches a durable "when X, do Y, because Z."
   **Carry-away:** append-only, read before action; promotion is human-gated.
+
+## Reviewing *(Standard profile adds)*
+
+- 🔨 `review-template.md` — a typed `REV-NNN` review report (`reviews/`, APPEND-ONLY; dispositions update in place).
+  **Open when:** filing any review pass with findings — adversarial review, verifier run, security audit.
+  **Carry-away:** every finding gets a stable `REV-NNN-FNN` id, a disposition (FIXED / DEFER / WONTFIX / TRACKED→OQ), and a test-obligation — no silent drops.
 
 ## Routing
 

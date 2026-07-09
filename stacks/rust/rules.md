@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-09
 paths: ["**/*.rs", "**/Cargo.toml", "**/build.rs"]
 ---
 
@@ -14,6 +15,11 @@ panic-family bans below, `{{CODE_INTEL_TOOL}}` → rust-analyzer (see `code-inte
 
 ## Lint & format gates (strict by decision, not preference)
 
+- **Versions-check first — the gate FAILS on toolchain drift.** Before any other stage runs, verify
+  the active toolchain matches the pins (`rustc --version` / `cargo --version` against
+  `rust-toolchain.toml`, plus pinned gate tools like clippy/rustfmt riding the toolchain channel). A
+  mismatch is a gate FAILURE, not a note — a later stage that goes green under an unpinned toolchain
+  is vacuously green, not passing.
 - **`cargo clippy --all-targets --all-features -- -D warnings` must pass — warnings are errors.**
   A clippy warning is a build failure, not a suggestion. `cargo fmt --check` must pass too. The
   pre-commit hook runs both; **never `--no-verify`** to get past a failing gate — investigate it.

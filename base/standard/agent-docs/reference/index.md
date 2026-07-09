@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [meta, index, routing, reference]
 related: [CONVENTIONS]
 ---
@@ -30,7 +30,11 @@ re-verified) · Last-verified (facts drift — date the check) · See also.
 
 ## Reference docs
 
-<!-- EXAMPLE (delete this block on the first real reference doc):
+- 🔨 `work-discipline.md` *(Full profile)* — the gated-delivery standard-of-record: INTAKE→G0→DECOMPOSE→per-wave G1/G2/G2-docs/G3→G4, the risk-tier dial, and the scale-down floor.
+  **Open when:** starting a work unit, or unsure which gate a piece of work must clear next.
+  **Carry-away:** the gate table maps 1:1 onto the dispatch-charter lifecycle — one definition of "done".
+
+<!-- EXAMPLE (delete this block on the first real project-authored reference doc):
 - `architecture-overview.md` — **Open when:** you need the big-picture shape before changing a
   subsystem. **Carry-away:** <the one-sentence fact this doc anchors>. (Verified <date>.)
 -->

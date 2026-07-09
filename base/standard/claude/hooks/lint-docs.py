@@ -469,7 +469,11 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
 # under root, excluding now/ and templates/, that hold >= 1 non-index, non-template .md.
 # ---------------------------------------------------------------------------------------------------
 
+# In-dir references count in two forms (mirrors lint-agent-docs-indexes.sh exactly): a bare
+# backtick token `file.md`, or a ledger-table markdown link [label](file.md). Targets containing
+# '/' are cross-dir references and are skipped by both patterns.
 INDEX_TOKEN_RE = re.compile(r"`([^`/]*\.md)`")
+INDEX_LINK_RE = re.compile(r"\]\(([^)/]*\.md)\)")
 
 
 def content_docs(dirpath):
@@ -526,7 +530,8 @@ def check_index_completeness(root, findings):
         except OSError as exc:
             findings.append(Finding(13, FAIL, rel(idx, root), 1, "cannot read index.md: %s" % exc))
             continue
-        indexed = set(t for t in INDEX_TOKEN_RE.findall(itext) if t != "index.md")
+        indexed = set(t for t in INDEX_TOKEN_RE.findall(itext) + INDEX_LINK_RE.findall(itext)
+                      if t != "index.md")
         unindexed = sorted(disk - indexed)
         phantom = sorted(indexed - disk)
         if unindexed:

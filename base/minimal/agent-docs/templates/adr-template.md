@@ -10,6 +10,7 @@ Delete this comment block + the inline guidance comments once filled in.
 ---
 provenance: llm-reviewed        # §2 — accepted ADRs may NOT be llm-draft/llm-autonomous
 status: proposed                # proposed → accepted/rejected → superseded/deprecated (§2, §5)
+                                # §5 veracity gate: proposed→accepted needs load-bearing reality-claims [code-verified]
 template-version: 1.0.0
 created: <YYYY-MM-DD>            # LOCAL date (date +%Y-%m-%d), not UTC (§2)
 last-modified: <YYYY-MM-DD>

@@ -27,7 +27,7 @@ test -f .agent-docs/.kit-manifest.json && echo "manifest: present" || echo "mani
 ```
 
 Read `.agent-docs/.kit-manifest.json` — it records `kit-version`, `profile`, `stack`, and a per-file
-list (`action` · `sha256` · `backup-path`). It is the ground truth for what was installed; the checks
+list (`action` · `sha256` · `backup`). It is the ground truth for what was installed; the checks
 below are keyed to the `profile` it names (Minimal skips the safety-gate + doc-linter checks). If the
 manifest is missing, the install was interrupted — resume the scaffold (`concierge/scaffold-plan.md`)
 before verifying.
@@ -84,6 +84,19 @@ through:
 
 Re-run until clean. A clean lint here is what makes the ADR lint meaningful once the tour writes
 `ADR-0001` (see `handover-tour.md`). If `python3` is absent (§1), skip this check and say so.
+
+**Profile payload spot-checks** (one `test -f` each; a miss means the scaffold skipped a file-op):
+
+```bash
+# Standard+: the review ledger + its template landed and are indexed
+test -f .agent-docs/reviews/index.md && test -f .agent-docs/templates/review-template.md \
+  && echo "reviews: present" || echo "reviews: MISSING (Standard+ payload)"
+# Full: the gated-delivery standard-of-record landed
+test -f .agent-docs/reference/work-discipline.md \
+  && echo "work-discipline: present" || echo "work-discipline: MISSING (Full payload)"
+```
+
+(Minimal profile: both checks are expected-absent — skip them.)
 
 ## 3. `settings.json` parses + is wired
 

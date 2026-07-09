@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 paths: ["**/*.go", "**/go.mod", "**/go.sum"]
 ---
 
@@ -33,8 +33,11 @@ pack is the Go binding for the generic `{{BUILD_CMD}} / {{TEST_CMD}} / {{LINT_CM
   `golangci-lint run` as first-class gates anyway.
 - **`golangci-lint` is the aggregate linter.** Its zero-config default set — `errcheck`, `govet`,
   `ineffassign`, `staticcheck`, `unused` — is the strict baseline; pin the version in a
-  `.golangci.yml` / `.golangci.yaml` and in CI so local and CI agree. `staticcheck` may also be run
-  standalone (`staticcheck ./...`). Do not disable a linter to get past a finding — investigate it.
+  `.golangci.yml` / `.golangci.yaml` and in CI so local and CI agree — and make that versions-check
+  the FIRST gate stage: verify `go version` and `golangci-lint version` against the pins (`go.mod`'s
+  `go` / `toolchain` directives, the `.golangci.yml` pin) and FAIL on drift, rather than letting the
+  later stages go vacuously green under a toolchain the pins don't describe. `staticcheck` may also be
+  run standalone (`staticcheck ./...`). Do not disable a linter to get past a finding — investigate it.
 - **Formatting is not optional: code MUST be gofmt-clean.** `gofmt` is canonical; `goimports`
   (golang.org/x/tools/cmd/goimports) is the superset that also repairs import grouping. CI checks with
   `gofmt -l .`; `golangci-lint fmt` is the v2 formatter entrypoint. The pre-commit hook runs the

@@ -13,8 +13,9 @@
 #   - phantom entries (referenced bare token, no such file in dir)
 #
 # Token contract (per the CONVENTIONS index template): in-dir files are referenced as `file.md`
-# (bare backtick token); cross-dir references use relative paths (`../dir/file.md`) and are
-# ignored here (tokens containing '/' are skipped). Presence-only by design.
+# (bare backtick token) or as an in-dir markdown link `[label](file.md)` (ledger-table idiom);
+# cross-dir references use relative paths (`../dir/file.md`) and are ignored here (targets
+# containing '/' are skipped). Presence-only by design.
 #
 # Modes: default = warn (always exit 0; one line per drifting dir, silent when clean).
 #        --strict = exit 1 if any drift (CI / gate use).
@@ -58,7 +59,8 @@ for dir in $(managed_dirs); do
     continue
   fi
   disk=$(find "$dir" -maxdepth 1 -name '*.md' ! -name 'index.md' -exec basename {} \; | sort -u)
-  indexed=$(grep -o '`[^`/]*\.md`' "$idx" 2>/dev/null | sed 's/`//g' | grep -v '^index\.md$' | sort -u)
+  # match both bare backtick tokens `file.md` AND ledger-table markdown links [label](file.md)
+  indexed=$( { grep -oE '`[^`/]*\.md`' "$idx" | tr -d '`'; grep -oE '\]\([^)/]*\.md\)' "$idx" | sed -E 's/^\]\(//; s/\)$//'; } 2>/dev/null | grep -v '^index\.md$' | sort -u)
   unindexed=$(comm -23 <(echo "$disk") <(echo "$indexed") | grep -c . || true)
   phantom=$(comm -13 <(echo "$disk") <(echo "$indexed") | grep -c . || true)
   if [ "$unindexed" -gt 0 ] || [ "$phantom" -gt 0 ]; then

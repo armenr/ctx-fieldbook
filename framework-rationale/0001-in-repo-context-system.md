@@ -31,6 +31,9 @@ be true at the *start* of the next session.
 - **Native session memory only.** Rejected: it captures background well, but not
   the decisions, handoffs, and lessons that must persist as *curated, re-readable*
   artifacts. State that lives only in the model's memory dies at compaction.
+  (The standing rules now make this normative: all durable knowledge lives in the
+  repo-local `.agent-docs/` system, and a harness/user-local memory store holds only
+  a redirect pointer — standing-rules-core §Findings-to-disk, memory-locality rule.)
 - **A two-tier split** — a separate "strategy" store and a separate "execution"
   store, kept in sync by hand. Rejected: the hand-sync human relay is a single
   point of failure, and the split breeds vestigial stubs and dangling cross-store

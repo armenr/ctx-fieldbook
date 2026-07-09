@@ -1,9 +1,10 @@
 ---
 name: handoff
-description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
+description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality. Accepts optional session notes as arguments. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
+argument-hint: [optional session notes to fold into the handoff]
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [skill, lifecycle, handoff]
 ---
 
@@ -18,15 +19,31 @@ When invoked, do these steps in order. Be honest about what you know vs. what yo
 
 Default to manual unless the systemMessage context indicates otherwise.
 
-## 1. Pull current state
+## 1. Current state (captured at invocation)
 
-```bash
-git log --oneline -8
-git status -s
-git rev-list --count HEAD ^origin/{{DEFAULT_BRANCH}} 2>/dev/null || echo "(no upstream)"
-```
+Today's date, LOCAL — this mechanically pins the §8 date rule; use it verbatim for frontmatter + body dates:
+
+!`date +%Y-%m-%d`
+
+Working tree:
+
+!`git status --short 2>/dev/null || echo "(not a git repo)"`
+
+Recent commits:
+
+!`git log --oneline -10 2>/dev/null || echo "(no git history)"`
+
+Commits ahead of origin/{{DEFAULT_BRANCH}}:
+
+!`git rev-list --count HEAD ^origin/{{DEFAULT_BRANCH}} 2>/dev/null || echo "(no upstream)"`
+
+Operator session notes (fold into the handoff; may be empty):
+
+$ARGUMENTS
 
 If the session touched runtime-facing code, gather minimal verification (the latest `{{BUILD_CMD}}` / `{{LINT_CMD}}` / `{{TEST_CMD}}` result; a `{{CODE_INTEL_TOOL}}` reachability output if a wiring claim is in flight). Only what's relevant to "what changed this session." Don't over-fetch.
+
+**Disposition uncommitted non-doc WORK explicitly.** If the working tree above shows uncommitted changes outside the doc surfaces, name them in the handoff — working-tree state in §3's status rewrite plus a disposition line in §8's Immediate next steps: coherent → recommend the operator commit them as their own WORK commit; not yet coherent → record them explicitly as WIP. Never let work changes ride silently into a docs commit, and never commit them yourself (§9 — auto-commit stays forbidden).
 
 ### 1.4 Pull the latest sitrep (consume the zero-loss checkpoint)
 
@@ -111,7 +128,7 @@ If the doc linter hook is installed (Standard profile), run `python3 .claude/hoo
 
 ## 8. Regenerate `.agent-docs/now/handoff.md`
 
-THE load-bearing artifact. **Date rule:** `date +%Y-%m-%d` (LOCAL) for frontmatter + body dates; UTC only for the archive filename in §2.
+THE load-bearing artifact. **Date rule:** `date +%Y-%m-%d` (LOCAL) for frontmatter + body dates — the interpolated date at the top of §1 IS this value; UTC only for the archive filename in §2.
 
 Frontmatter: `provenance: llm-reviewed`, `created`/`last-modified` (local), `tags: [current, handoff, session-state]`, `related: [status, work-plan, open-questions]`, `generator: /handoff`.
 
@@ -136,7 +153,7 @@ When part of the context belongs in a DIFFERENT repo (a new meta-repo, a sibling
 
 ## 9. Report
 
-**Manual:** "N files updated; previous handoff archived to `<path>`" + one-line summary per file + "Recommended next: review + commit (don't auto-commit)."
+**Manual:** "N files updated; previous handoff archived to `<path>`" + one-line summary per file + "Recommended next: review, then commit — WORK changes and doc updates as SEPARATE commits, never blended (don't auto-commit either)."
 **Silent (hook):** reply literally `NO_REPLY`.
 
 **DO NOT auto-commit in either mode.**
@@ -147,7 +164,8 @@ When part of the context belongs in a DIFFERENT repo (a new meta-repo, a sibling
 - Do NOT let "immediate next action" be vague. Specific paths + commands + gates.
 - Do NOT duplicate ADR/memory content — reference by ID.
 - Do NOT auto-commit. Do NOT skip the archive step. Do NOT include secrets or regulated / user data.
+- Do NOT recommend blending WORK changes and doc updates into one commit — separate commits, always (and you make neither).
 
 ## Design rationale
 
-The session-lifecycle contract + the residue-sweep and lesson-gate disciplines live in `standing-rules-core.md` (§Context lifecycle, §Findings-decisions-and-review-feedback-to-disk) and `CONVENTIONS.md` (§6 checkpoint contract this skill consumes, §1 lessons ledger).
+The session-lifecycle contract + the residue-sweep and lesson-gate disciplines live in `standing-rules-core.md` (§Context lifecycle, §Findings-decisions-and-review-feedback-to-disk) and `CONVENTIONS.md` (§6 checkpoint contract this skill consumes, §1 lessons ledger). Git state and today's LOCAL date are pulled at invocation via the shell-interpolation blocks in §1, so the handoff is written against current reality (and the date rule is pinned mechanically, not by convention alone). Work/doc commit separation is operator GUIDANCE layered on the never-auto-commit rule, not a loosening of it: the skill recommends the split; the operator makes every commit.

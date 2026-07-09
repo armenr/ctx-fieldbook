@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [meta, index, routing, lessons]
 related: [CONVENTIONS]
 ---
@@ -19,7 +19,7 @@ replaces the MOC. Schema authority: `../CONVENTIONS.md` (lesson template).
 ## Entry purpose + naming
 
 - **Purpose:** an atomic, evidence-linked lesson or near-miss — "when X, do Y, because Z."
-- **Filename:** `lessons/<kebab-slug-of-title>.md`; superseded entries → `lessons/archive/`.
+- **Filename:** `lessons/<kebab-slug-of-claim>.md`; superseded entries → `lessons/archive/`.
 - **Write-discipline:** APPEND-ONLY (`status:` may change to `superseded`/`deprecated`/`quarantined`).
 
 ## Entry SCHEMA (front-matter axes + body)

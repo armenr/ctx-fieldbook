@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-09
 tags: [concierge, uninstall, reversible, manifest]
 ---
 
@@ -50,8 +50,8 @@ Sort into a plan and SHOW it before removing anything:
 /uninstall  Fieldbook <version> (profile: <p> · stack: <s>)
   delete (kit-created):      .claude/skills/**, .claude/hooks/**, .claude/rules/**,
                              .githooks/**, .agent-docs/CONVENTIONS.md, templates/**, ...   (N files)
-  restore-from-backup:       CLAUDE.md  <- CLAUDE.md.pre-fieldbook-<ts>
-                             .claude/settings.json  <- settings.json.pre-fieldbook-<ts>
+  restore-from-backup:       CLAUDE.md  <- CLAUDE.md.fieldbook-backup-<ts>
+                             .claude/settings.json  <- settings.json.fieldbook-backup-<ts>
   colleague content present: .agent-docs/decisions/** (K real ADRs), lessons/**, memories/**
                              -> KEPT by default (your work). Remove too? (ask explicitly)
   unset:                     git config core.hooksPath
@@ -90,16 +90,21 @@ If `CLAUDE.md` was merged with NO recorded backup (it existed but the kit only a
 remove exactly the kit-owned region and nothing else — the delimiters the merge step inserted:
 
 ```
-<!-- fieldbook:begin -->
+<!-- kit:start (fieldbook <kit-version>) -->
    ... the spliced Fieldbook constitution / pointer ...
-<!-- fieldbook:end -->
+<!-- kit:end -->
 ```
 
-Delete only the lines from `fieldbook:begin` through `fieldbook:end` inclusive, preserving all of the
-colleague's own `CLAUDE.md` prose above and below. Show the resulting diff and confirm before saving.
-(If a backup WAS recorded, prefer restoring it — §2 — over surgery. If the marker tokens in the actual
-file differ from the above, defer to what's physically present / what `concierge/merge-strategy.md`
-stamped — the manifest's merge record is authoritative.)
+Match on the `kit:start` prefix, not the full line — the version stamp inside the parentheses changes
+across upgrades, so find the block with a regex like `<!-- kit:start \(fieldbook [^)]*\) -->` (or simply
+"the line beginning `<!-- kit:start`") rather than an exact-string compare against one version. Delete
+only the lines from the `kit:start` line through the matching `<!-- kit:end -->` inclusive, preserving
+all of the colleague's own `CLAUDE.md` prose above and below. Marker blocks belonging to OTHER tools
+(any `<!-- something:begin/end -->` pair that isn't the kit's `kit:start`/`kit:end`) are not yours —
+leave them byte-untouched (`merge-strategy.md` "Foreign marker blocks"). Show the resulting diff and
+confirm before saving. (If a backup WAS recorded, prefer restoring it — §2 — over surgery. If the
+marker tokens in the actual file differ from the above, defer to what's physically present / what
+`concierge/merge-strategy.md` stamped — the manifest's merge record is authoritative.)
 
 ## 4. Unset the git-hooks wiring
 
@@ -112,7 +117,9 @@ git config --unset core.hooksPath 2>/dev/null && echo "unset core.hooksPath" || 
 If the install renamed a pre-existing `.git/hooks/pre-commit` to `*.stale-disabled-<ts>` (the
 fresh-clone protection), tell the colleague it's there and let them decide whether to restore it — do
 NOT auto-reactivate an old gate. If the `--copy` install mode was used instead, remove
-`.git/hooks/pre-commit` and restore any `*.pre-fieldbook-*` backup beside it.
+`.git/hooks/pre-commit` and restore any `*.fieldbook-backup-*` backup beside it. (Backup naming
+follows `merge-strategy.md`: `<file>.fieldbook-backup-<UTC-timestamp>`; the manifest's recorded
+`backup:` path is always authoritative over the naming pattern.)
 
 ## 5. Manual fallback (no manifest)
 

@@ -61,7 +61,8 @@ decisions you made.
   work into fenced, file-disjoint dispatch charters with an independent verifier.
   *Open when:* running parallel builders or deterministic fan-out.
   *Carry-away:* the executor never audits its own work; charters must be
-  file-disjoint within a wave.
+  file-disjoint within a wave; the orchestrator is the sole integration point —
+  no sub-agent commits.
 
 - **`0007-revisit-anchor-ledger.md`** *(Full profile)* — typed `REVISIT` anchors
   linked to a single ledger, enforced by a lint.
@@ -74,3 +75,23 @@ decisions you made.
   *Open when:* a synthesis doc "exceeds" a cap, or a standard has no clear home.
   *Carry-away:* the real bar is "synthesize, don't dump," verified by audit, not a
   line ceiling; fix the rule when the rule is wrong, the work when the work is.
+
+- **`0009-inbound-reference-sweep.md`** *(Standard profile)* — a grep-sweep at
+  cycle start gathers everything that references or awaits the unit being started.
+  *Open when:* deciding how parked obligations get found when their cycle starts.
+  *Carry-away:* any obligation ledger is only as complete as the discipline that
+  fed it; a cheap gather-then-triage sweep catches what leaked, by construction.
+
+- **`0010-reviews-findings-home.md`** *(Standard profile)* — review findings get
+  a dedicated `reviews/` ledger with per-finding dispositions + test-obligations.
+  *Open when:* deciding where adversarial-review findings live and how they close.
+  *Carry-away:* a finding has its own lifecycle — no existing dir models it; the
+  test-obligation column turns "write tests against these" into a queryable
+  backlog, and a review is done only when every finding is dispositioned.
+
+- **`0011-marker-convention.md`** — one CLAUDE.md marker fence for every
+  lifecycle operation: `kit:start (fieldbook <kit-version>)` … `kit:end`.
+  *Open when:* touching anything that writes, upgrades, or removes the kit's
+  CLAUDE.md block.
+  *Carry-away:* match on the `kit:start` prefix across versions, never an exact
+  one-version string; foreign marker blocks are preserved byte-verbatim.

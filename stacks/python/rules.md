@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-09
 paths: ["**/*.py", "**/*.pyi", "**/pyproject.toml", "**/ruff.toml", "**/.ruff.toml", "**/mypy.ini", "**/setup.cfg", "**/tox.ini"]
 ---
 
@@ -17,6 +18,11 @@ mypy, pyright, pytest, uv) — currency-check again before pinning versions.
 
 ## Lint & format & type gates (strict by decision, not preference)
 
+- **Versions-check first — the gate FAILS on toolchain drift.** Before any other stage runs, verify
+  the active toolchain matches the pins: `python --version` against `requires-python` /
+  `.python-version`, and `ruff --version` / `mypy --version` (or `pyright --version`) against the
+  lockfile's resolved versions. A mismatch is a gate FAILURE, not a note — a lint or type-check run
+  that goes green under a toolchain the pins don't describe is vacuously green, not passing.
 - **`ruff check` must pass with zero findings.** Ruff is the linter (it subsumes flake8, isort,
   pyupgrade, and much of pylint). Configure it in `pyproject.toml` under `[tool.ruff.lint]`; select a
   broad rule set (at least `E,F,W,I,B,UP,SIM,RUF` — pycodestyle, pyflakes, isort, bugbear, pyupgrade,
