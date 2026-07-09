@@ -2,6 +2,58 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.3.0-dev — 2026-07-10
+
+Wave-3 pass: shipped the gate-runner **agents-starter** crew and the **recurrence-guard** enforcement
+module (both opt-in, never default), plus the deterministic reachability oracle the crew cites. No
+field-install bytes ship — the six agent skeletons, the guard template, and the reachability fragments
+are all de-hosted, generalized mechanism.
+
+- **New Full-tier opt-in module — `agents-starter`.** Six token-filled sub-agent templates →
+  `<target>/.claude/agents/`, one per leg of the dispatch-charter lifecycle: **`tactical-planner`**
+  (decompose a `WU-NNNN` into file-disjoint waves + author each charter's Part-A work-spec),
+  **`recon-verifier`** (read-only scope recon → the unit's complete file-ownership set),
+  **`quality-engineer`** (the RED-on-HEAD falsifier matrix + proven-non-vacuous negative controls),
+  **`docs-sync`** (reconcile docs to the wave diff, self-skip on no-impact), **`integration-auditor`**
+  (IMPL→WIRED reachability proof — the built-but-not-wired trap), and **`completion-agent`**
+  (fresh-context close-out verifier). Every template **points at `standing-rules-core.md` for the
+  dispatch contract and never restates it** (the #1 silent-drift risk); carries a mandatory degradation
+  guard (referenced artifact missing / operator-waived → flag the operator, never invent a tracked file);
+  pins a `cheap | standard | deep` model tier per the model-pinning rule; and files findings into the
+  existing spine sinks (a `traceability/` row + the charter's verifier report). `recon-verifier` /
+  `integration-auditor` / `completion-agent` are read-only by construction. Offer-gated: only when the
+  dispatch-charter module + the `traceability/` ledger are installed. The module wires no hook and no
+  `settings.json` block — Claude Code discovers agents by reading `.claude/agents/`.
+- **Roster exclusions (v1).** Three agents from the same field lineage are deliberately left out:
+  `requirements-analyst` and `plan-reviewer` (anchored to intake/review maturity that is not yet a
+  load-bearing default — shipping their prompts would smuggle an unadopted pipeline in through the back
+  door of a role definition), and `security-engineer` (its substance is the ~100%-host-specific
+  per-project attack surface — a HOST-fill-only body would be an empty shell). Each flips in on a named
+  condition: the intake/review home lands as default payload; the owner commits a red-team findings home.
+- **New Standard+ opt-in module — `recurrence-guard`.** A freshly-authored commit-blocking grep-guard
+  skeleton (`template.sh`) mirroring revisit-ledger. When a decision closes a bug class, one
+  `scripts/<bug-class>-guard.sh` **fails the commit** if the banned idiom reappears — the rule is
+  enforced, not merely remembered. Ships the determinism-split doctrine (deterministic residue → hook,
+  judgment → reviewer), a positive-control sentinel (fails LOUD when a rename strips every matchable
+  token), and loud fail-open when the analysis engine is absent. One guard per bug class; inert until
+  `BANNED` is filled; zero lines of the field scripts ship.
+- **Stack reachability fragments.** Every `stacks/<lang>/code-intel.md` gains a named
+  **`## Reachability baseline`** section — the deterministic dead/unreachable-code oracle the agent
+  templates cite for the IMPL→WIRED check: `deadcode` (go), `knip` (node-ts), `vulture` (python), the
+  rustc/clippy `dead_code` gate + `cargo-udeps`/`cargo-machete` (rust), and the honest grep-floor
+  call-chase (generic). Each carries a degradation fallback (tool absent → grep-floor, record textual
+  evidence in `traceability/`, never invent an analysis-backed verdict) and a currency note dated
+  2026-07-10.
+- **Concierge + manifest wiring.** `profiles.md`, `interview.md` (Q5), and `scaffold-plan.md` gain the
+  offer + copy steps for both modules — agents-starter → `.claude/agents/` with `<!-- HOST: … -->` blocks
+  resolved post-install; recurrence-guard → `scripts/` + a per-bug-class pre-commit registration.
+  `ship-manifest.md` flips `agents-starter` to **built** and adds the `recurrence-guard` row.
+- **Deferred to 0.3.x — the UPSTREAM-class harvest sweep.** The fleet's ahead-of-kit field surfaces (a
+  red-team review tier, an events/measurement firewall, populated `reviews/` exemplars, and the other
+  UPSTREAM queues) remain **pending the fleet's completion reports**: each surface is still adjudicated
+  kit-side against its existing flip-condition before harvest, never flattened. Scoped for a later 0.3.x
+  cut.
+
 ## 0.2.0-dev — 2026-07-09
 
 Fleet-reconciliation pass: upstreamed the Wave-1 field inventions, fixed 7 defects in the shipped

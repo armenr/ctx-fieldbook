@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-10
 paths: ["**/*.py", "**/*.pyi"]
 ---
 
@@ -58,6 +59,20 @@ To prove new code is reachable from a production entrypoint (a `[project.scripts
   and the LSP reference walk above exist to close; a clean `ruff check` on an export is not proof of
   wiring. When a real caller is dynamic (an entry-point plugin, a framework auto-discovery), record the
   manual trace rather than trusting either tool's silence.
+
+## Reachability baseline
+
+The deterministic oracle the IMPL→WIRED proof cites is **`vulture`**: `vulture <pkg>` reports unused
+functions, classes, methods, and imports in one reproducible, CI-able run; `--min-confidence` (60–100) tunes
+the noise floor and `--make-whitelist` emits a whitelist that suppresses known-dynamic symbols. A symbol you
+just added that vulture reports as unused is IMPL-not-WIRED. Blind spot: Python's dynamism (`getattr`,
+decorator registries, entry-point plugins) makes vulture flag dynamically-referenced symbols as dead —
+confirm a hit against the LSP reference walk above, or whitelist it, before deleting. If vulture is
+unavailable, fall back to the grep-floor call-chase and record in `traceability/` that the evidence is
+textual.
+
+> **Currency:** `vulture` checked against PRIMARY docs on 2026-07-10 (pypi.org/project/vulture, v2.16).
+> Re-verify before adopting.
 
 ## Related
 

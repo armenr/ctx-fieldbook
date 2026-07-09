@@ -474,6 +474,10 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
 # '/' are cross-dir references and are skipped by both patterns.
 INDEX_TOKEN_RE = re.compile(r"`([^`/]*\.md)`")
 INDEX_LINK_RE = re.compile(r"\]\(([^)/]*\.md)\)")
+# HTML comment blocks are stripped BEFORE the token scan: an index seed carries an EXAMPLE comment
+# whose illustrative `<name>.md` tokens name files that don't exist yet — counting them would flag a
+# phantom entry on a fresh install. A commented-out row is not a live index entry.
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def content_docs(dirpath):
@@ -498,6 +502,9 @@ def managed_dirs(root):
     except OSError:
         return result
     for base in top:
+        # Skip dot-prefixed dirs (.git, .kit-backups, ...) — they hold no managed content docs.
+        if base.startswith("."):
+            continue
         d = os.path.join(root, base)
         if not os.path.isdir(d):
             continue
@@ -507,6 +514,8 @@ def managed_dirs(root):
             result.append(d)
         try:
             for sub in sorted(os.listdir(d)):
+                if sub.startswith("."):
+                    continue
                 subd = os.path.join(d, sub)
                 if os.path.isdir(subd) and content_docs(subd):
                     result.append(subd)
@@ -530,7 +539,8 @@ def check_index_completeness(root, findings):
         except OSError as exc:
             findings.append(Finding(13, FAIL, rel(idx, root), 1, "cannot read index.md: %s" % exc))
             continue
-        indexed = set(t for t in INDEX_TOKEN_RE.findall(itext) + INDEX_LINK_RE.findall(itext)
+        scan = HTML_COMMENT_RE.sub("", itext)  # drop commented-out example rows before counting
+        indexed = set(t for t in INDEX_TOKEN_RE.findall(scan) + INDEX_LINK_RE.findall(scan)
                       if t != "index.md")
         unindexed = sorted(disk - indexed)
         phantom = sorted(indexed - disk)
@@ -573,7 +583,10 @@ def load_workplan_wus(root):
 
 def iter_markdown(root):
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames.sort()
+        # Prune dot-prefixed subdirectories (.git, .kit-backups, ...) so VCS internals and kit backups
+        # living under the root are never linted. The root itself (.agent-docs) is always kept — os.walk
+        # only exposes CHILD dir names here, so a dot-prefixed root is unaffected.
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
         for fn in sorted(filenames):
             if fn.endswith(".md"):
                 yield os.path.join(dirpath, fn)

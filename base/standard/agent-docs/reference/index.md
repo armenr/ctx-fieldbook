@@ -20,7 +20,8 @@ Stable **WHAT-IS** facts: architecture notes, inventories, syntheses, validated-
 ## Entry purpose + naming
 
 - **Purpose:** capture a stable, reusable fact so it is not re-derived from scratch each session.
-- **Filename:** `reference/<kebab-topic>.md` (e.g. `architecture-overview.md`, `validated-versions.md`).
+- **Filename:** `reference/<kebab-topic>.md` — a kebab-case topic name (for example an architecture
+  overview, or a validated-versions matrix).
 - **Write-discipline:** UPDATE-IN-PLACE (rare). A standard-of-record carries `provenance: human`.
 
 ## Entry SCHEMA (body)

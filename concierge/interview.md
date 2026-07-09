@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-10
 tags: [concierge, interview, install]
 related: [profiles, parameters, scaffold-plan, merge-strategy]
 ---
@@ -96,6 +96,11 @@ Present ONE table. Every row is detected + editable. This replaces five separate
 - If a gate row is **empty** (no build/lint/format exists — common for a script or a docs repo), say so
   plainly and leave the token empty: the pre-commit gate treats an unwired command as a graceful skip,
   and the safety hook still works. Don't invent a command.
+- **Toolchain-manifest sanity.** If a gate got a *pack-default* fill but the stack's toolchain manifest
+  is absent from the tree — no `Cargo.toml` (rust) / `package.json` (node-ts) / `pyproject.toml` (python)
+  / `go.mod` (go) for the detected stack — WARN and recommend the empty-is-honest fill (`parameters.md`).
+  A forward-filled gate whose toolchain doesn't exist runs at first commit and *blocks the install's own
+  commit*; an empty cell skips gracefully. Prefer empty over a command that cannot run.
 - If **existing context files** were found, add one warm line: *"You've already got a `CLAUDE.md` /
   `.claude` here — I won't clobber it. I'll back it up, add my part inside a marked block, and show you
   the diff before anything changes."* (Sets up Q6; mechanism is `merge-strategy.md`.)
@@ -157,6 +162,18 @@ the profile already includes.
   stack gate fragment (`generic/gate-fragment.sh` has the pattern; first-class packs already gate their
   language's foot-guns — publish, global install, dependency re-lock).
 
+**Standard+ — a regression lock (opt-in module):**
+> "If you've closed a bug class in a decision — a 'we will never write X again' — I can stage a
+> **recurrence-guard**: a commit-blocking check that fails the commit if that banned idiom ever comes
+> back, so the rule is enforced, not just remembered. One guard per closed bug class; it's inert until
+> you point it at a real idiom, so staging it early costs nothing. Want it, or add it later when you've
+> got a rule to lock?"
+- Only offer if `modules/recurrence-guard/` exists in this build. It's **Standard+** (it wires into the
+  Standard `.githooks/pre-commit` gate). If they name a bug class now, the concierge clones the template
+  to `scripts/<bug-class>-guard.sh` and registers it; otherwise it stages the inert skeleton for later
+  per-class instantiation. Mechanics + the determinism-split + the two hardening techniques (positive-
+  control sentinel · loud fail-open): `modules/recurrence-guard/README.md`.
+
 **Everyone (any profile) — the statusline:**
 > "Want the Fieldbook status line? One dense line at the bottom: repo + branch, model + context window,
 > auto-compact state, context used (% and tokens), your 5h/7d rate-limit usage with reset countdowns, and
@@ -178,9 +195,24 @@ the profile already includes.
 - `revisit-ledger` → `modules/revisit-ledger/**`.
 - Both are additive; "neither" is fine and re-runnable later.
 
-**If `agents-starter` / `native-lite` modules are present in this kit build**, offer them here too (fresh
-generic mechanism agents; the lean-on-native-memory variant). If a module directory named in
-`profiles.md` is absent from this kit build, do NOT offer it — offer only what exists on disk.
+**Full only — the agent crew (opt-in module), offered only when the spine is present:**
+> "Since you're on Full with the dispatch-charter system and the traceability ledger, I can also drop in
+> **agents-starter**: six ready-made sub-agent templates — a planner, a scope-recon verifier, a
+> quality/falsifier, a docs-sync, an integration (IMPL→WIRED) auditor, and a fresh-context completion
+> verifier — one per leg of the charter lifecycle. They're the read-only / authoring crew around your one
+> build agent, they point at your standing rules for the dispatch contract rather than restating it, and
+> installing them is just dropping files into `.claude/agents/` — no hook, no settings change. Want them,
+> or skip for now?"
+- **Offer ONLY if** `modules/agents-starter/` exists in this build **AND** the dispatch-charter module +
+  the `traceability/` ledger are already installed (they are on a Full install) — the crew are lifecycle
+  roles for that spine and have nothing to report into without it (`profiles.md` pre-wires this gate).
+- On yes: the six `agents/*.template.md` copy to `<target>/.claude/agents/*.md`; the concierge fills the
+  twelve scalars, and the `<!-- HOST: … -->` blocks are resolved **post-install** (per-project prose the
+  friend writes over each block's generic example). No hook and no `settings.json` block. Undo is deleting
+  the six files.
+
+**Any other module named in `profiles.md` but absent from this kit build** (e.g. `native-lite`, the
+lean-on-native-memory variant) is **not offered** — offer only what exists on disk.
 
 ---
 

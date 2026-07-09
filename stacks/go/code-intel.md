@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-10
 paths: ["**/*.go"]
 ---
 
@@ -63,6 +63,21 @@ a registered `http.Handler`, a registered CLI command, or a public API a real co
 - **The compiler only rejects unused *locals* and *imports*** — an unused *exported* / package-level
   function or type compiles clean, so the compiler's silence is NOT proof of wiring. Use the gopls
   reference / call-hierarchy walk above to confirm a real caller exists.
+
+## Reachability baseline
+
+The deterministic oracle the IMPL→WIRED proof cites is **`deadcode`** (golang.org/x/tools/cmd/deadcode):
+via Rapid Type Analysis it builds the whole-program call graph rooted at every `main` (add `-test` for test
+binaries) and prints every function unreachable from those entrypoints — one reproducible, scriptable run:
+`deadcode ./...`. A symbol you just added that it lists is IMPL-not-WIRED; `-whylive=pkg.Func` prints the
+live call path when it *is* wired. RTA is conservative (interface / reflection / `func`-value calls may
+over-report reachability, and `//go:linkname` is unmodelled), so a *listed* symbol is a strong dead verdict
+but an *absent* one still wants the call-hierarchy walk above to name the caller. If `deadcode` is
+unavailable, fall back to the grep-floor call-chase and record in `traceability/` that the evidence is
+textual, not analysis-backed.
+
+> **Currency:** `deadcode` checked against PRIMARY docs on 2026-07-10
+> (pkg.go.dev/golang.org/x/tools/cmd/deadcode, v0.48.0). Re-verify before adopting.
 
 ## Related
 

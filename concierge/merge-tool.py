@@ -10,9 +10,12 @@
 # The two laws it enforces (merge-strategy.md §5):
 #   * NEVER CLOBBER — an existing file is only ever appended-to / unioned-into / marker-merged, never
 #     overwritten. Invalid JSON in a target aborts (exit 2) with every file left untouched.
-#   * ALWAYS REVERSIBLE — every file it modifies is backed up first, and every action is recorded to
-#     an append-only manifest ({action, path, sha256 before/after, backup, ts}) so a run is auditable
-#     and undoable.
+#   * ALWAYS REVERSIBLE — every file it modifies is backed up first (default backup dir
+#     <target>/.kit-backups/<ts>/ at the repo ROOT, deliberately OUTSIDE .agent-docs/ so a backed-up
+#     .md is never re-linted), and every action is recorded to the manifest so a run is auditable and
+#     undoable. A JSON-object manifest carrying a files[] array gets a canonical row read-modify-
+#     written into files[] (merge-strategy §4); a plain .jsonl sink gets a per-action line
+#     ({action, path, sha256 before/after, backup, ts}).
 #
 # Portability contract (the maintainer may be on macOS / BSD / WSL):
 #   * STOCK Python 3, STDLIB ONLY — no pip installs.
@@ -291,7 +294,9 @@ def resolve_backup_dir(target, args):
         return d if d.is_absolute() else target / d
     if not args.ts:
         die("--ts is required to build the default backup dir (timestamps are supplied, not generated)")
-    return target / ".agent-docs" / ".kit-backups" / args.ts
+    # Repo ROOT, NOT under .agent-docs/: a backup of a .md file (CLAUDE.md, a doc) landing inside
+    # .agent-docs/ would be re-linted by the kit's own doc linter and fail on the backed-up copy.
+    return target / ".kit-backups" / args.ts
 
 
 def rel_to_target(path, target):
@@ -301,10 +306,48 @@ def rel_to_target(path, target):
         return str(path)
 
 
-def append_manifest(manifest_path, target, entry):
+def _canonical_row(entry):
+    """Project a tool action entry onto the merge-strategy §4 files[] row shape.
+
+    The tool doesn't know the kit-source path (that's concierge-supplied), so `source` is null;
+    `sha256` is the installed file's digest. This is the canonical shape kit-doctor / kit-upgrade /
+    uninstall read/write."""
+    return {
+        "path": entry.get("path"),
+        "action": entry.get("action"),
+        "source": entry.get("source"),
+        "sha256": entry.get("sha256_after"),
+        "backup": entry.get("backup"),
+    }
+
+
+def record_manifest(manifest_path, target, entry):
+    """Record one action to the manifest.
+
+    If --manifest points at an existing JSON-OBJECT manifest carrying a files[] array, read-modify-
+    write a canonical row (merge-strategy §4) INTO files[] — a row for the same path is REPLACED, not
+    duplicated (idempotent re-run). We NEVER append raw JSONL onto a structured manifest: that
+    produced an unparseable object-plus-lines hybrid in the field. Any other sink — a plain .jsonl
+    evidence log, or a not-yet-created file — gets the per-action JSONL append."""
     p = Path(manifest_path).expanduser()
     if not p.is_absolute():
         p = target / p
+    if p.is_file():
+        try:
+            existing = json.loads(p.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError):
+            existing = None
+        if isinstance(existing, dict) and isinstance(existing.get("files"), list):
+            row = _canonical_row(entry)
+            files = existing["files"]
+            for i, r in enumerate(files):
+                if isinstance(r, dict) and r.get("path") == row["path"]:
+                    files[i] = row
+                    break
+            else:
+                files.append(row)
+            p.write_text(json.dumps(existing, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            return
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -335,7 +378,7 @@ def commit(op, target, args, backup_dir):
     if args.manifest:
         if not args.ts:
             die("--ts is required to write a manifest entry (timestamps are supplied, not generated)")
-        append_manifest(args.manifest, target, {
+        record_manifest(args.manifest, target, {
             "action": op.action,
             "path": op.rel,
             "sha256_before": sha_before,
@@ -366,7 +409,7 @@ def build_parser():
     ap.add_argument("--set-if-absent", metavar="KEY=VALUE", action="append", default=[],
                     help="set a top-level settings scalar only if absent (repeatable)")
     ap.add_argument("--backup-dir", metavar="DIR",
-                    help="backup directory (default: <target>/.agent-docs/.kit-backups/<ts>)")
+                    help="backup directory (default: <target>/.kit-backups/<ts>, at the repo root)")
     ap.add_argument("--manifest", metavar="PATH",
                     help="append one JSON action entry per write to this path")
     ap.add_argument("--ts", metavar="STAMP",

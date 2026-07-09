@@ -24,10 +24,13 @@ each clobbering MERGE is surfaced and confirmed on its own.
 > **Mechanical executor.** The write steps in §1–§2 are implemented by `concierge/merge-tool.py`
 > (python3 stdlib, kit-side only — never installed into the target). The concierge stays the
 > consent layer: compute the plan, show the diff (`--dry-run`), get the explicit yes, THEN invoke
-> the tool as the write primitive. The tool emits a per-action JSONL log (`action · path ·
-> sha256-before/after · backup · ts`); the concierge composes the structured
-> `.kit-manifest.json` `files[]` entries (§4) from that log — the JSONL is evidence, the manifest
-> is the record.
+> the tool as the write primitive. Backups land under `<target>/.kit-backups/<ts>/` at the repo
+> ROOT — deliberately OUTSIDE `.agent-docs/`, so a backed-up `.md` is never re-linted by the kit's
+> own doc linter. Manifest sink is dual: pointed at the structured `.kit-manifest.json` (a JSON
+> object carrying a `files[]` array) the tool read-modify-writes a canonical §4 row into `files[]`
+> (a row for the same path is replaced, never duplicated); pointed at a plain `.jsonl` log it
+> appends a per-action evidence line (`action · path · sha256-before/after · backup · ts`). It never
+> appends raw JSONL onto a structured manifest — that hybrid is unparseable.
 
 ## 1 · Existing `CLAUDE.md` → backup + marker block + diff + yes
 
@@ -131,7 +134,7 @@ record.
   "completed": "<UTC timestamp | null while in-flight>",
   "status": "in-progress|complete",
   "tokens": { "PROJECT_NAME": "...", "BUILD_CMD": "...", "...": "..." },
-  "modules": ["research-pipeline", "revisit-ledger"],
+  "modules": ["research-pipeline", "revisit-ledger", "recurrence-guard", "agents-starter"],
   "files": [
     {
       "path": "<dest, relative to target>",

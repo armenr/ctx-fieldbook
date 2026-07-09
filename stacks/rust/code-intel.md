@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-10
 paths: ["**/*.rs"]
 ---
 
@@ -47,6 +48,20 @@ symbol, a bin target, or a public API a real consumer calls):
 - **`dead_code` does NOT flag unreachable `pub` items** — the compiler assumes an external consumer might
   call them. So for a new *public* API, the compiler's silence is not proof of wiring; use the
   rust-analyzer reference / call-hierarchy walk above to confirm a real caller exists.
+
+## Reachability baseline
+
+The deterministic oracle is built into the toolchain: **rustc / clippy's `dead_code` lint**, promoted to a
+gate with `-D warnings` (or `#![deny(dead_code)]`), fails the build on any unreachable private item every
+compile — reproducible, no extra tool. A fresh `dead_code` hit on code you just added is IMPL-not-WIRED (the
+`pub`-item blind spot from the section above still applies — confirm a new public API with the rust-analyzer
+reference walk). For the dependency axis, **`cargo-udeps`** (`cargo +nightly udeps`, compiler-accurate,
+nightly-only) and the faster text-based **`cargo-machete`** report crates declared in `Cargo.toml` but never
+used. If nightly / udeps is unavailable, the `dead_code` gate plus the grep-floor call-chase are the floor;
+record in `traceability/` that the residual evidence is textual.
+
+> **Currency:** `cargo-udeps` / `cargo-machete` checked against PRIMARY docs on 2026-07-10
+> (crates.io/crates/cargo-udeps, crates.io/crates/cargo-machete). Re-verify before adopting.
 
 ## Related
 

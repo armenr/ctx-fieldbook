@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-10
 paths: ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts", "**/*.js", "**/*.jsx", "**/*.mjs", "**/*.cjs"]
 ---
 
@@ -57,6 +58,20 @@ listener):
   is invisible to `tsc`, exactly the built-but-not-wired case. That gap is what the module-graph tool
   (`madge --orphans`) and the LSP reference walk above exist to close; the compiler's silence on an
   export is not proof of wiring.
+
+## Reachability baseline
+
+The deterministic oracle the IMPL→WIRED proof cites is **`knip`**: from the project's real entrypoints
+(`package.json` `bin` / `exports` / `scripts` plus framework config) `npx knip` reports unused files,
+exports, and dependencies in one reproducible, CI-able run. `ts-prune` is the narrower predecessor (unused
+exports only), now in maintenance mode and superseded by knip — reach for knip. A file or export you just
+added that knip flags as unused is IMPL-not-WIRED. Blind spot: a dynamic `import()` or a string-keyed
+handler can make knip over-report deadness, so confirm a flagged symbol against the LSP reference walk above
+before deleting. If neither tool is available, fall back to the grep-floor call-chase and record in
+`traceability/` that the evidence is textual.
+
+> **Currency:** `knip` / `ts-prune` checked against PRIMARY docs on 2026-07-10
+> (knip.dev, npmjs.com/package/ts-prune). Re-verify before adopting.
 
 ## Related
 

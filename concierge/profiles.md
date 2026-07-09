@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [concierge, profiles, payload-map]
 related: [interview, scaffold-plan, parameters, merge-strategy]
 ---
@@ -57,6 +57,10 @@ The `now/` state spine + the cold-start loop + the schema + the ADR habit. Sourc
 | `skills/handoff/SKILL.md` | `skills/handoff/SKILL.md` |
 | `settings.json.template` | `settings.json` | fill + drop `.template` + **prune** to installed hooks (`scaffold-plan.md` §settings) |
 
+> **`skills/install/` never ships.** It is the concierge skill that *runs* this install — kit-side only,
+> excluded from every profile's payload. Only the friend-facing skills above (and, at Standard+,
+> `kit-doctor` + `kit-upgrade`) copy into the target; enumerate them explicitly, never a `skills/**` walk.
+
 ### Stack pack (Minimal takes only what it uses)
 - `rules.md` + `code-intel.md` from the selected `stacks/<lang>/` → placed as the target's language
   context (`scaffold-plan.md` decides final location); token-fill.
@@ -100,6 +104,8 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 | `skills/sitrep/SKILL.md` | `skills/sitrep/SKILL.md` | token-fill |
 | `skills/debrief/SKILL.md` | `skills/debrief/SKILL.md` | token-fill (`{{PRIMARY_LANGUAGE}}`, `{{CODE_INTEL_TOOL}}`) |
 | `skills/distill-lessons/SKILL.md` | `skills/distill-lessons/SKILL.md` | token-fill |
+| `skills/kit-doctor/SKILL.md` | `skills/kit-doctor/SKILL.md` | verbatim — the maintainer repair skill (no tokens); ships into the target |
+| `skills/kit-upgrade/SKILL.md` | `skills/kit-upgrade/SKILL.md` | verbatim — the maintainer upgrade skill (no tokens); ships into the target |
 
 ### The assembled safety-gate hook (Standard+ only)
 - Base: `base/standard/claude/hooks/pretooluse-safety-gates.base.sh`.
@@ -120,6 +126,9 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
   blocking opt-in via pre-commit), the SubagentStart prefix, and the path-aware pre-commit dispatcher.
 - The typed review-report ledger (`reviews/`, `REV-NNN` + per-finding disposition + test-obligation) —
   the durable home the findings-to-disk standing rule mandates.
+- **(opt-in)** the `recurrence-guard` module — a commit-blocking regression lock, one per ADR-closed bug
+  class (it wires into the Standard+ pre-commit gate); offered at Q5, mechanics in the modules table +
+  `modules/recurrence-guard/README.md`.
 - ID spine adds `LP` (lessons) · `REV` (reviews).
 
 ---
@@ -154,17 +163,33 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 |---|---|---|
 | research pipeline | `modules/research-pipeline/SKILL.md` | `<target>/.claude/skills/research-pipeline/SKILL.md` |
 | revisit-ledger | `modules/revisit-ledger/revisit-ledger.template.md` | `<target>/.agent-docs/reference/revisit-ledger.md` (fill + drop `.template`) |
-| revisit-ledger | `modules/revisit-ledger/revisit-lint.sh` | `<target>/.claude/hooks/revisit-lint.sh` |
+| revisit-ledger | `modules/revisit-ledger/revisit-lint.sh` | `<target>/scripts/revisit-lint.sh` (matches `wu-refs.sh` + recurrence-guard; the module README's pre-commit block invokes `scripts/revisit-lint.sh`) |
 | revisit-ledger | `modules/revisit-ledger/README.md` | reference only (not copied to target) |
 | statusline (ANY profile) | `modules/statusline/statusline.py` | **global:** `~/.claude/statusline.py` · **project:** `<target>/.claude/statusline.py` (+ a `statusLine` block in the chosen `settings.json` — see the module README) |
+| agents-starter (Full; **offer-gated**) | `modules/agents-starter/agents/*.template.md` (six roles) | `<target>/.claude/agents/*.md` (FILL scalars + drop `.template`; `<!-- HOST: … -->` blocks resolved **post-install**; no hook / `settings.json` wiring) |
+| agents-starter | `modules/agents-starter/README.md` | reference only (not copied to target) |
+| recurrence-guard (Standard+) | `modules/recurrence-guard/recurrence-guard.template.sh` | `<target>/scripts/<bug-class>-guard.sh` (COPY + FILL `CONFIG`; **one copy per closed bug class**, not a fixed filename) + a pre-commit registration block (`scaffold-plan.md` §6.4) |
+| recurrence-guard | `modules/recurrence-guard/README.md` | reference only (not copied to target) |
 
 > The statusline is available at **any** profile (it's a per-user quality-of-life add-on, not tied to
 > Full) and is the one module whose **global** form writes to `~/.claude` — the concierge asks scope
 > (global/project) and gets a distinct yes for a global write.
 
-> `agents-starter` / `native-lite` appear in the distillation plan as Full-tier opt-in modules. Offer
-> them ONLY if their directory exists under `modules/` in this kit build; otherwise they are not part of
-> this build and the concierge does not mention them.
+> **`recurrence-guard`** is available at **Standard+** (not Full-only): it wires into the `.githooks/
+> pre-commit` gate, which is a Standard payload. It is **one guard per closed bug class** — the concierge
+> clones `recurrence-guard.template.sh` to `scripts/<bug-class>-guard.sh` once per ADR-closed bug class (or stages the
+> inert skeleton for later instantiation), never a single fixed-name install. Mechanics + the
+> determinism-split doctrine + the two hardening techniques: `modules/recurrence-guard/README.md`.
+
+> **`agents-starter`** ships in this build as a **Full-tier opt-in**: six dispatch-lifecycle sub-agent
+> templates → `<target>/.claude/agents/`. Offer it ONLY when its directory exists under `modules/` in
+> this build **AND** the dispatch-charter module + the `traceability/` ledger are already installed (they
+> are, at Full) — the crew are lifecycle roles *for that spine* and have nothing to report into without
+> it (the module README states the same gate). The six templates carry `<!-- HOST: … -->` blocks resolved
+> **after** the scalar fill (post-install), and the module wires no hook and no `settings.json` block —
+> Claude Code discovers agents by reading `.claude/agents/`. `native-lite` (the lean-on-native-memory
+> variant) is **not part of this build**; as with any module absent from `modules/`, the concierge does
+> not mention it.
 
 ### Enforcement at Full
 - The full gate set + the traceability ledger + (if opted) the revisit-lint pre-commit check.

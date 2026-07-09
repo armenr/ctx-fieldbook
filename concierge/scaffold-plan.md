@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [concierge, scaffold, deterministic, install]
 related: [interview, profiles, parameters, merge-strategy]
 ---
@@ -103,14 +103,22 @@ dry-run plan and the manifest are stable across runs.
     tokens to FILL). Minimal: skip (the sweep pairs with the Standard+ orchestration discipline).
 2.2 **Skills** — bare-name dirs under `.claude/skills/` (never namespaced, so `/orient` muscle memory
     transfers; distillation decision on skills). Minimal: FILL `skills/{orient,flush,handoff}/SKILL.md`.
-    Standard+: FILL `skills/{sitrep,debrief,distill-lessons}/SKILL.md`. Full + opted:
+    Standard+: FILL `skills/{sitrep,debrief,distill-lessons}/SKILL.md` and COPY-VERBATIM
+    `skills/{kit-doctor,kit-upgrade}/SKILL.md` (the maintainer repair + upgrade skills — no tokens; they
+    DO ship into the target so the friend can self-diagnose / self-upgrade). Full + opted:
     `skills/research-pipeline/SKILL.md` (from `modules/research-pipeline/`).
+    - **Exclusion — never ship `skills/install/`.** That is the CONCIERGE skill (it *runs* this install);
+      it is kit-side only and is NEVER copied into a target. Copy skills by the explicit per-profile list
+      above — never a wholesale `skills/**` walk, which would drag `install/` (and any other concierge-
+      side skill) into the target.
 2.3 **Hooks (non-assembled)** — Minimal: COPY `hooks/sessionstart-state-router.sh`,
     `hooks/precompact-handoff-trigger.sh`. Standard+: COPY `hooks/lint-docs.py`,
     `hooks/lint-docs.README.md`, `hooks/lint-agent-docs-indexes.sh` (the fast index-lint the router +
     pre-commit probe), `hooks/install-hooks.sh`, `hooks/README.md`; FILL
     `hooks/subagentstart-prefix.sh` (`{{PROJECT_NAME}}`). Full + opted revisit-ledger: COPY
-    `hooks/revisit-lint.sh` (from `modules/revisit-ledger/`).
+    `modules/revisit-ledger/revisit-lint.sh` → `<target>/scripts/revisit-lint.sh` (a pre-commit-
+    invoked script, NOT a `.claude/hooks/` hook — its registration block calls `scripts/revisit-lint.sh`;
+    lands beside `wu-refs.sh` + any recurrence-guard).
 2.4 `chmod +x` every installed `.sh` (portable chmod; ignore failures — `install-hooks.sh` re-chmods).
 2.5 **Statusline (opted, any profile — from `modules/statusline/`).** By chosen scope:
     - **project:** COPY `modules/statusline/statusline.py` → `<target>/.claude/statusline.py`; record for
@@ -120,6 +128,22 @@ dry-run plan and the manifest are stable across runs.
       (`python3 ~/.claude/statusline.py`), backing up that file per `merge-strategy.md`. Record both in
       the manifest so uninstall can reverse the global write too.
     - Exact settings blocks + mechanics: `modules/statusline/README.md`.
+2.6 **Agent crew (Full + opted `agents-starter` — from `modules/agents-starter/agents/`).** Offer-gated:
+    install only when `dispatch-charters/` + `traceability/` are present (both Full payload). For each of
+    the six `*.template.md` (process in sorted order): FILL the twelve scalars, RENAME
+    `<name>.template.md → <name>.md`, COPY into `<target>/.claude/agents/`, and strip each file's leading
+    `INSTALL` comment. The `<!-- HOST: … -->` blocks are **NOT** filled here — they are per-project prose
+    the operator writes **post-install**; flag them in the Q6 plan as a deferred manual step (each block
+    carries one generic example to overwrite). No hook and no `settings.json` block — Claude Code discovers
+    agents by reading `.claude/agents/` (module README). `recon-verifier` / `integration-auditor` /
+    `completion-agent` are read-only by construction — do NOT add Write/Edit to their `tools` line.
+2.7 **Recurrence guard (Standard+ + opted `recurrence-guard` — from `modules/recurrence-guard/`).** One
+    guard per closed bug class, so there is **no fixed-name install**: if Q5 named a bug class, COPY
+    `recurrence-guard.template.sh`, FILL its `CONFIG` block, RENAME → `<target>/scripts/<bug-class>-guard.sh`, `chmod +x`,
+    and register it in the pre-commit gate (Phase 6.4). If none is named yet (the common case), STAGE the
+    skeleton verbatim as `<target>/scripts/recurrence-guard.template.sh` (retain `.template` — it is inert
+    until `BANNED` is filled) so the friend can clone-and-fill one per bug class later without the kit
+    tree, per the module README. `README.md` stays reference-only (never copied to the target).
 
 ---
 
@@ -158,6 +182,10 @@ Standard-only hooks, so it MUST be pruned per profile):
 
 4.1 FILL the template's `{{BUILD_CMD}}`/`{{TEST_CMD}}`/`{{LINT_CMD}}`/`{{FMT_CMD}}` permission entries.
     Drop any allow-entry whose command is empty (no such gate) so no `Bash(:*)` garbage lands.
+    **Gate-command sanity (mirrors interview Q2):** if a gate scalar holds a *pack-default* command but the
+    stack's toolchain manifest is absent (no `Cargo.toml`/`package.json`/`pyproject.toml`/`go.mod` for the
+    detected stack), treat it as empty (empty-is-honest, `parameters.md`) — a forward-filled gate whose
+    toolchain doesn't exist blocks the install's own first commit.
 4.2 **Prune the `hooks` block to installed hooks only.** Remove any hook entry whose target script was
     not installed by this profile:
     - Minimal: keep `SessionStart` + `PreCompact`; **remove** `SubagentStart` and `PreToolUse`
@@ -213,6 +241,13 @@ a subdirectory CLAUDE.md loads lazily — only the project-root file is reliably
     `core.hooksPath` for something else, use `--copy` mode (documented in `install-hooks.sh`).
 6.3 Claude Code hooks (settings.json) need no separate wiring — they activate when settings.json is
     present. Confirm the four (or two, at Minimal) reference installed scripts (Phase 4.2 guaranteed it).
+6.4 **Recurrence-guard registration (Standard+ + opted, one block per instantiated guard).** For each
+    live `scripts/<bug-class>-guard.sh` produced at Phase 2.7, insert its registration block just before
+    the final `exit "$rc"` in `<target>/.githooks/pre-commit`, in the form the module README documents:
+    `if [ -x scripts/<bug-class>-guard.sh ]; then … bash scripts/<bug-class>-guard.sh || rc=1; fi`
+    (this mirrors the revisit-ledger pre-commit wiring; MERGE the pre-commit file per `merge-strategy.md`
+    if it already exists). A **staged** `recurrence-guard.template.sh` (no bug class named yet) registers
+    **nothing** — registration happens per bug class at instantiation time.
 
 ---
 

@@ -1,6 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
+last-modified: 2026-07-10
 ---
 
 # `{{CODE_INTEL_TOOL}}` — the language-agnostic reachability prover
@@ -51,6 +52,21 @@ public API a real consumer calls):
 - **Beware the public-API blind spot:** many toolchains do NOT flag an unreachable *exported* symbol
   (they assume an external consumer might call it). So for a new public API, the linter's silence is not
   proof of wiring — use the reference / call-hierarchy walk above to confirm a real caller exists.
+
+## Reachability baseline
+
+With no code-intel tool installed, the baseline is the **grep-floor call-chase**, run deterministically:
+from each production entrypoint (a `main`, a served handler, an exported API a real consumer calls) grep the
+symbols it calls, then grep the callers of your new symbol, and chase the chain by hand until it either
+reaches an entrypoint (WIRED) or dead-ends (IMPL-not-WIRED). It is reproducible but purely textual — it
+misses dynamic dispatch, reflection, and re-exported aliases, and its cost grows with call depth. **Honest
+note: this is a floor, not an oracle.** A real reachability tool — a language server's call hierarchy, or a
+dead-code detector like the ones the first-class packs name (`deadcode`, `knip`, `vulture`, rustc
+`dead_code`) — should replace it the moment one exists for the stack. Record the hand-traced chain in
+`traceability/` so the textual evidence is on disk, not lost.
+
+> **Currency:** the named exemplar tools (`deadcode`, `knip`, `vulture`, rustc `dead_code`) checked against
+> PRIMARY docs on 2026-07-10; see each stack pack's `code-intel.md`. Re-verify before adopting.
 
 ## Related
 
