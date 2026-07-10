@@ -2,11 +2,21 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
-## 0.4.0-dev — 2026-07-10
+## 0.4.0 — 2026-07-11 (first verified release)
+
+Cut as the kit's first release to clear its own built-AND-verified bar: every surface below
+passed the P8 end-to-end exercise (install → byte-identical uninstall; single-party install →
+comms-gained → form promotion; adversarially audited) before this tag.
 
 The **obligations ledger** (ADR-0012) — the first kit surface tracking what an agent is
 **owed**, not just what it owes — plus the origin-posture rationale (ADR-0013) and two
 field-evidenced linter fixes.
+
+- **`examples/sample-review.md`** joins the gallery (seventh sample, same Sparrow WU-0042
+  thread): a fully-populated REV-001 modeling the capture-ALL discipline — six findings across
+  every severity (the NIT gets a disposition too), all four dispositions with reasons, every
+  test-obligation form, and a verdict lifecycle updated in place. Adversarially verified for
+  schema fidelity and fiction coherence before landing.
 
 - **Inter-party debt ledger** (`framework-rationale/0012`): two directions (owed-by / owed-to),
   direction-aware HARD/SOFT class, per-row promise `Source`, and the two novel fields — a
