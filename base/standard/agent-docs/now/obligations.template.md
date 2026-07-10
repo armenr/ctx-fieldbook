@@ -86,11 +86,14 @@ related: [status, work-plan, open-questions, handoff]
 
 ## Settled (do not re-chase)
 
-> A settled row is struck through in place with a settlement stamp (date + Source) and kept for ONE
-> cycle so `/orient` can surface "settled while away". Then it is **journaled to `log.md`** (folded into
-> the `/handoff` log entry — the permanent append-only record) and **pruned** from this file, so this
-> section stays bounded. Never *silently* delete a row — the log entry is the preserved audit trail; a
-> row that vanished with no journal entry reads as a *dropped* obligation, not a discharged one.
+> Settling = **strike the row AND move it into THIS section in the same edit** (the strike marks it,
+> the move keeps the live tables scannable), stamped (date + Source), kept for ONE cycle so `/orient`
+> can surface "settled while away". Then it is **journaled to `log.md`** (folded into the `/handoff`
+> log entry — the permanent append-only record) and **pruned** from this file, so this section stays
+> bounded. The Settled entry is deliberately a compact BULLET (counterparty · what · stamp · Source),
+> not the full table row — an audit stub; column-level fidelity lives in the journal entry. Never
+> *silently* delete a row — the log entry is the preserved audit trail; a row that vanished with no
+> journal entry reads as a *dropped* obligation, not a discharged one.
 
 <!-- example:start · delete on your first real entry (a settlement, before it folds to log.md) -->
 - ~~repo-b · shared event-schema doc~~ — SETTLED 2026-07-09 (received; filed as `reference/event-schema.md`; closes `OQ-014`) — msg 9c1d-40

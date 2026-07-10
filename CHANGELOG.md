@@ -2,6 +2,21 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.4.1-dev — 2026-07-11
+
+First-field-adoption findings (the obligations surface's first real install, same evening as the
+v0.4.0 tag) — four doc clarifications + one field-contributed manifest hardening:
+
+- **Adopt-row self-exemption trap closed** (the headline): an instantiated `now/obligations.md`
+  enters the manifest as `action: "create"`, NEVER `"adopt"` — an adopt-row is schema-exempt and
+  would switch off lint rule 17 for the very file it guards. Stated in scaffold-plan §1.2b and
+  kit-upgrade's promotion step.
+- **`kit_commit` manifest field** (field-contributed): when `kit_ref` is a TAG, freeze the tag's
+  resolved SHA alongside — tags can move, SHAs can't; verification compares against the SHA.
+- **`multi_party` value schema stated:** JSON boolean, never a string.
+- **Settled lifecycle disambiguated:** settling = strike + move to `## Settled` in one edit; the
+  Settled entry is deliberately a compact audit stub (column fidelity lives in the journal).
+
 ## 0.4.0 — 2026-07-11 (first verified release)
 
 Cut as the kit's first release to clear its own built-AND-verified bar: every surface below

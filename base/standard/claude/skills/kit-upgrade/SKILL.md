@@ -180,7 +180,8 @@ is consent-gated and shown before it runs.
   at EOF) — remove header-to-next-section-OR-EOF and verify zero `## Obligations` matches remain; a
   next-section-only pattern silently no-ops on the EOF case and leaves BOTH forms live. Then VERIFY the
   `now/index.md` routing row (it ships conditionally-phrased — nothing to add) and flip `multi_party`
-  true in the manifest header. **Idempotent:** a re-run that finds `now/obligations.md` already present and
+  true in the manifest header. The promoted file's manifest row is `action: "create"` — NEVER
+  `"adopt"` (adopt-rows are schema-exempt and would switch off rule 17 for the file it guards). **Idempotent:** a re-run that finds `now/obligations.md` already present and
   the section already gone no-ops.
 - **Retirement — file → section** (`multi_party` true → false; the DOWN empty-ceremony flip, ADR-0012). ONLY
   when the ledger holds **no live cross-party rows** — if any live row remains, do NOT retire; report and

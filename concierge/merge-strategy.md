@@ -145,6 +145,8 @@ record.
 {
   "kit_version": "<from kit-version.txt>",
   "kit_ref": "<IMMUTABLE ref of the kit tree installed from — commit SHA or version tag, NEVER a branch name>",
+  "kit_commit": "<when kit_ref is a TAG, the tag's resolved commit SHA frozen alongside — tags can move, SHAs can't; verification compares against THIS (field-contributed pattern, first v0.4.0 adoption)>",
+  "multi_party": "<JSON boolean true|false — the obligations-ledger form decision (ADR-0012), recorded at install/ratification; never a string>",
   "profile": "minimal|standard|full",
   "stack": "rust|node-ts|python|go|generic",
   "created": "<UTC timestamp>",
