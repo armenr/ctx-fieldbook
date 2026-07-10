@@ -44,7 +44,8 @@ settings.json are the always-merge-if-present cases.
     warn: hooks + branch gates assume git; offer to proceed docs-only or stop.
 0.2 Compute the full operation list (Phases 1–7 below) WITHOUT writing — this is the Q6 dry-run.
 0.3 On the Q6 yes: create/open `<target>/.agent-docs/.kit-manifest.json` and write the header
-    (`kit-version` from `<kit>/kit-version.txt`, `profile`, `stack`, `created` timestamp, `tokens`
+    (`kit-version` from `<kit>/kit-version.txt`, `kit_ref` — the kit tree's IMMUTABLE commit SHA or
+    version tag, never a branch name — `profile`, `stack`, `created` timestamp, `tokens`
     resolved). If a manifest already exists, this is a repair/upgrade run — reconcile against it
     (`merge-strategy.md` §idempotency) instead of starting fresh.
     *(The manifest lives inside `.agent-docs/`, so Phase 1 must create that dir first; in practice

@@ -131,6 +131,7 @@ record.
 ```json
 {
   "kit_version": "<from kit-version.txt>",
+  "kit_ref": "<IMMUTABLE ref of the kit tree installed from — commit SHA or version tag, NEVER a branch name>",
   "profile": "minimal|standard|full",
   "stack": "rust|node-ts|python|go|generic",
   "created": "<UTC timestamp>",
@@ -155,6 +156,11 @@ record.
 **This block is the CANONICAL manifest row schema** — scaffold-plan, kit-upgrade (including its
 retro-adoption backfill), kit-doctor, and uninstall all read/write THIS shape; the field is `backup`
 (never `backup-path`), and `adopt` is the action for retro-adopted files.
+
+**Pin fields.** The header `kit_ref` is the ratified BASELINE pin for every row. A row may carry its
+own `kit-ref` override ONLY when it diverges from the baseline (a security-expedited single-file
+delta, an incremental adoption) — mirroring the `keep-local` only-on-override pattern. Pins are
+immutable refs; the pin protocol itself lives in the kit-upgrade skill (§Pin protocol).
 
 ### The five modes (all read the manifest first)
 

@@ -254,8 +254,30 @@ permission union, refuse-don't-clobber, backups + ledger) — no hand-stitched e
 Every kept artifact — including untouched COPY-VERBATIM and KEEP-LOCAL rows — gets a manifest row:
 its `path`, the `sha256` of what is on disk after adoption, and `action: "adopt"`. Mark
 COPY-VERBATIM/GENERATE rows `kit-owned`; mark KEEP-LOCAL rows `colleague-owned` so upgrades keep
-skipping them. Stamp `kit-version`, `profile`, and `stack`. From the next run onward the tree takes
-the normal 3-way path in steps 1–6.
+skipping them. Stamp `kit-version`, `kit_ref`, `profile`, and `stack`. From the next run onward the
+tree takes the normal 3-way path in steps 1–6.
+
+### Pin protocol (applies to upgrades AND retro-adoption)
+
+The kit tree moves while adoptions run — sometimes *because of* an adopter's own shakedown findings.
+Four rules keep that from split-braining a plan (field-hardened by the first two adopters through
+the pipe):
+
+1. **Every plan records its pin.** The plan (and the manifest header) carries `kit_ref` — the
+   IMMUTABLE ref of the kit tree it was built against: a commit SHA or version tag, never a branch
+   name (a branch pin dangles the moment the kit history moves).
+2. **Pre-ratification drift → diff and rule.** If the kit HEAD moves past the pin before the
+   operator ratifies, the inventory diffs the pin→HEAD delta and the operator rules re-pin vs stay;
+   the ruling is recorded in the plan.
+3. **Post-ratification → never re-pin mid-execution.** Finish at the ratified pin; the delta rides a
+   follow-up run (small and cheap by construction, since the manifest now exists). The one sanctioned
+   expedite: a **surgical single-file delta** (e.g. a security fix to an already-adopted file),
+   operator-acked, recorded with a per-row `kit-ref` override. The line is surgical-single-file
+   (allowed) vs rebase-the-adoption (banned).
+4. **UPSTREAM interlock.** A follow-up delta that merely codifies one of THIS tree's own
+   UPSTREAM-marked rows is a NO-OP re-adoption — detect and skip it, never re-adopt an adopter's own
+   invention back at them. (The kit maintainer reciprocates: a kit landing that moves HEAD past an
+   in-flight adopter's pin owes that adopter an active delta ping.)
 
 ## Anti-patterns
 
