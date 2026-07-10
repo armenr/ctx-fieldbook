@@ -3,7 +3,9 @@
 #
 # This is the ENFORCEMENT the CONVENTIONS.md "Lint rules" section refers to. CONVENTIONS ships those
 # rules as a spec; this file makes them real. It implements every rule 1–15 from that section as a
-# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message.
+# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rule 16 is a kit-local
+# advisory (WARN-only, not a CONVENTIONS rule): it nudges `ADR-`-prefixed ADR filenames back toward the
+# canonical unprefixed form without failing the run.
 #
 # Portability contract (the colleague may be on macOS / BSD / WSL):
 #   * STOCK Python 3, STDLIB ONLY — no pip installs, no `import yaml`. Front-matter is hand-parsed.
@@ -24,8 +26,9 @@
 #   references not-yet-instantiated sibling names), `now/` staleness, and WU resolution. Rationale: a
 #   seed legitimately holds `{{PLACEHOLDER}}` tokens and points at names that only exist post-install;
 #   linting those as if instantiated would flag the kit itself. The ADR/checkpoint body rules are keyed
-#   on directory + filename shape (`decisions/NNNN-*.md`, `checkpoints/DATE-*.md`), so a template in
-#   `templates/` is never mistaken for the real artifact.
+#   on directory + filename shape (`decisions/[ADR-]NNNN-*.md` — the `ADR-` prefix is optional and
+#   recognized, `checkpoints/DATE-*.md`), so a template in `templates/` is never mistaken for the real
+#   artifact.
 #
 # Adopt-exemption: docs recorded `action: adopt` in `<root>/.kit-manifest.json` predate the kit and carry
 #   no kit front-matter — the schema-class rules (1,2,3,4,5,6,10,12) are skipped for them; rule 13 (index
@@ -67,6 +70,8 @@ RULES = {
     13: "index completeness (every populated content dir has a matching index.md)",
     14: "checkpoint integrity (all ten numbered points present)",
     15: "work-unit value resolves to a WU in now/work-plan.md",
+    16: "advisory: ADR filenames carry a redundant 'ADR-' prefix; canonical is decisions/NNNN-slug.md "
+        "(warn-not-fail)",
 }
 
 FAIL = "FAIL"
@@ -216,7 +221,13 @@ def parse_frontmatter(text):
 # ---------------------------------------------------------------------------------------------------
 
 CHECKPOINT_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}-.+\.md$")
-ADR_NAME_RE = re.compile(r"^\d{4}-[a-z0-9].*\.md$")  # NNNN-kebab (4-digit then dash then non-date)
+# NNNN-kebab (4-digit then dash then non-date). The `ADR-` prefix is OPTIONAL: the canonical authored
+# form is the unprefixed `NNNN-slug.md` (CONVENTIONS §5), but a natural adopter choice — carrying the
+# `ADR-` in the filename too — is ALSO recognized as an ADR so the ADR-class rules (4-7, 10) actually
+# run on it instead of silently no-op'ing. Rule 16 (advisory, WARN) nudges those back toward canonical.
+ADR_NAME_RE = re.compile(r"^(?:ADR-)?\d{4}-[a-z0-9].*\.md$")
+# Just the prefixed variant, used by the rule-16 convergence advisory.
+ADR_PREFIXED_NAME_RE = re.compile(r"^ADR-\d{4}-[a-z0-9].*\.md$")
 DATE_PREFIX_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 
 
@@ -307,14 +318,18 @@ def resolve_reference(ref, doc_path, root):
             return True
         cand2 = os.path.normpath(os.path.join(root, ref))
         return os.path.isfile(cand2)
-    # ADR-NNNN -> decisions/NNNN-*.md
+    # ADR-NNNN -> decisions/NNNN-*.md OR decisions/ADR-NNNN-*.md (adopters who keep the prefix on disk).
     m = re.match(r"^ADR-(\d{3,4})$", ref, re.IGNORECASE)
     if m:
         dec = os.path.join(root, "decisions")
         if not os.path.isdir(dec):
             return False
         prefix = m.group(1)
-        return any(fn.startswith(prefix + "-") and fn.endswith(".md") for fn in os.listdir(dec))
+        return any(
+            (fn.startswith(prefix + "-") or fn.startswith("ADR-" + prefix + "-"))
+            and fn.endswith(".md")
+            for fn in os.listdir(dec)
+        )
     # Other typed IDs (OQ/WU/LP/…) are ledger rows, not files — treat as resolvable.
     if ID_PREFIX_RE.match(ref):
         return True
@@ -566,6 +581,35 @@ def check_index_completeness(root, findings):
 
 
 # ---------------------------------------------------------------------------------------------------
+# Rule 16 — ADR-prefix convergence advisory (WARN-only, one finding per run). The linter now RECOGNIZES
+# `decisions/ADR-NNNN-slug.md` as a full ADR (ADR_NAME_RE) and RESOLVES `ADR-NNNN` references against it
+# (resolve_reference), so a prefixed corpus is fully checked and never phantom-fails. This advisory is the
+# gentle counter-pressure: the canonical authored form stays the unprefixed `decisions/NNNN-slug.md`
+# (CONVENTIONS §5), so ONE warn per run names that form. It never fails a run (mirrors rule 12 staleness)
+# — convergence by nudge, not by forced rename.
+# ---------------------------------------------------------------------------------------------------
+
+def check_adr_prefix_advisory(root, findings):
+    dec = os.path.join(root, "decisions")
+    if not os.path.isdir(dec):
+        return
+    try:
+        prefixed = sorted(fn for fn in os.listdir(dec)
+                          if ADR_PREFIXED_NAME_RE.match(fn) and not fn.endswith(".template.md"))
+    except OSError:
+        return
+    if not prefixed:
+        return
+    shown = ", ".join(prefixed[:3]) + (", …" if len(prefixed) > 3 else "")
+    canonical = re.sub(r"(?i)^ADR-", "", prefixed[0])
+    findings.append(Finding(
+        16, WARN, rel(dec, root), 1,
+        "%d ADR file(s) carry the redundant 'ADR-' filename prefix (%s); the canonical authored form is "
+        "the unprefixed 'decisions/%s' — rename at leisure (ADR rules and references already work either "
+        "way)" % (len(prefixed), shown, canonical)))
+
+
+# ---------------------------------------------------------------------------------------------------
 # work-plan WU harvest (for rule 15)
 # ---------------------------------------------------------------------------------------------------
 
@@ -671,6 +715,7 @@ def main(argv=None):
     for path in iter_markdown(root):
         check_document(path, root, findings, now_date, args.warn_days, args.fail_days, workplan_wus)
     check_index_completeness(root, findings)
+    check_adr_prefix_advisory(root, findings)
 
     # Adopt-exemption: retro-adopted docs (manifest `action: adopt`) predate the kit and carry no kit
     # front-matter, so drop their schema-class findings. Rule 13 (index completeness) is NOT in the

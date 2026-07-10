@@ -55,6 +55,7 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
 | 13 | **Index completeness** — every populated content dir has a matching `index.md` | FAIL | Lint rule 13 · §7.1 |
 | 14 | Checkpoint integrity — all ten numbered points present | FAIL | Lint rule 14 · §6 |
 | 15 | `work-unit:` resolves to a WU in `now/work-plan.md` | FAIL | Lint rule 15 · §4 |
+| 16 | Advisory: ADR filenames carrying a redundant `ADR-` prefix (canonical is `NNNN-slug.md`) | **WARN** | kit-local advisory (not a CONVENTIONS rule) |
 
 ### Notes on specific rules
 
@@ -71,8 +72,12 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
   tokens (containing `/`) are ignored — presence-only, by design. Managed dirs are the one-level (and
   one-nested) content dirs under `--root`, **excluding `now/` and `templates/`**.
 - **Rule 8 resolution.** A bare id resolves to `<dir>/<id>.md` or `<root>/<id>.md`; a path-like token
-  (`../x/y.md`) resolves relative to the doc then to root; `ADR-NNNN` resolves to `decisions/NNNN-*.md`;
-  other typed ledger ids (`OQ-`, `WU-`, `LP-`, …) are treated as resolvable non-file references.
+  (`../x/y.md`) resolves relative to the doc then to root; `ADR-NNNN` resolves to `decisions/NNNN-*.md`
+  **or** `decisions/ADR-NNNN-*.md` (the filename prefix is optional — see rule 16); other typed ledger
+  ids (`OQ-`, `WU-`, `LP-`, …) are treated as resolvable non-file references.
+- **Rule 16 (ADR-prefix advisory) ships WARN-only.** An adopter whose ADR files are named
+  `ADR-NNNN-slug.md` is fully recognized — the ADR rules run and references resolve either way — but
+  one advisory per run names the canonical unprefixed form, so drift converges without a forced rename.
 
 ## What gets linted — the template stance (documented choice)
 
@@ -87,7 +92,7 @@ The linter walks **every `*.md` under `--root`**. It draws one distinction:
   (rule 12), and WU resolution (rule 15). Rationale: a seed legitimately holds `{{PLACEHOLDER}}` tokens
   and points at sibling names that only exist once installed — linting those as if instantiated would
   flag the kit against itself. The ADR/checkpoint body rules key off directory + filename shape
-  (`decisions/NNNN-*.md`, `checkpoints/DATE-*.md`), so a template in `templates/` is never mistaken
+  (`decisions/[ADR-]NNNN-*.md`, `checkpoints/DATE-*.md`), so a template in `templates/` is never mistaken
   for the real artifact.
 
 The linter reads its own two `.template.md` neighbours cleanly, including the leading `<!-- guidance -->`
