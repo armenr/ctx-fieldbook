@@ -3,7 +3,7 @@ name: kit-upgrade
 description: Reconcile an installed Fieldbook copy against a NEWER kit zip. Reads .agent-docs/.kit-manifest.json, 3-way diffs ONLY kit-owned files (skills/hooks/rules/templates/schema — never the colleague's content dirs), and uses sha256-vs-manifest so a file the colleague edited is treated as "theirs" (shows a diff, never overwrites). Bumps the recorded kit-version. When the manifest is MISSING but the tree is kit-lineage-shaped (hand-seeded / pre-kit port), emits a retro-adoption plan and backfills the manifest instead of stopping. Use when the author sends a newer Fieldbook zip, when a new kit's kit-version.txt is ahead of the installed one, or when upgrading/repairing an existing install. Consent-gated; shows a plan before writing.
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [skill, lifecycle, kit, upgrade, manifest]
 ---
 
@@ -186,6 +186,11 @@ one adoption-only class:
   KEEP-LOCAL until the kit catches up. Adoption is not one-directional — never flatten a source repo
   toward an older kit shape.
 
+Adopted-corpus rows (backfilled `action: adopt` in §C — a pre-existing flat doc corpus that predates the
+kit and carries no kit front-matter) are schema-exempt to the doc linter (`lint-docs.py` skips the
+front-matter/schema rules for them) but still owe per-dir `index.md` rows (rule 13 index completeness
+applies unchanged).
+
 **Transform + safety notes** (each earned by a real adoption; skip none):
 
 - **Gate-mechanism translation (do this FIRST).** Detect the tree's actual gate runner — `.githooks`
@@ -212,6 +217,16 @@ one adoption-only class:
 - **Provenance guard.** Adopted kit docs never import the KIT's lifecycle state into local records:
   a kit doc's `status:` (or its upstreamed twin's) does not change the status of the adopter's own
   ADRs/OQs — local decision lifecycle is owned locally.
+- **Public-fork / source-repo posture.** A leak-gated public fork MAY (1) write the nameless marker
+  `<!-- kit:start (<kit-version>) -->` — label dropped, version kept — recorded as a KEEP-LOCAL
+  documented-variant row; all lifecycle matching is prefix-only (`<!-- kit:start (`, label optional),
+  so named and nameless blocks are interchangeable (ADR-0011). (2) It MAY gitignore
+  `.kit-manifest.json`, documented by a local ADR; the committed manifest stays the default. (3) A
+  repo that is the ORIGIN of the kit machinery runs inventory+classify over the BACK-PORTED subset
+  only, marks its own inventions UPSTREAM, and fences nothing it authored — no kit-authored `CLAUDE.md`
+  block means skip the fence entirely (lifecycle then treats `CLAUDE.md` as never-kit-owned) —
+  manifesting only genuinely-adopted rows. When adoption RENAMES a file (`git mv`), stage the content
+  edits before committing or the staged snapshot lints stale.
 
 Present the plan as a per-artifact table — one row per path, with a keep-local column and per-row
 secret/machine flags (`secret`: never copy, echo, or diff its contents; `machine`: host-specific

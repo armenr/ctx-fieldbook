@@ -2,6 +2,23 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.3.1-dev — 2026-07-10
+
+Field-hardening pass from the first retro-adoption shakedown (public-fork + source-repo cases) and
+the first pre-existing-corpus adopter:
+
+- **Nameless marker variant (ADR-0011 amended).** Leak-gated public repos may write
+  `<!-- kit:start (<kit-version>) -->` (label dropped, version kept). Matching everywhere is by the
+  `kit:start (` prefix with the label OPTIONAL; `merge-tool.py --marker-label` writes it (empty
+  label = nameless). Cross-form replace-in-place proven by test.
+- **Source-repo posture** in kit-upgrade's retro-adoption: an origin repo classifies only the
+  back-ported subset, marks its inventions UPSTREAM, fences nothing it authored; leak-gated repos
+  may gitignore the manifest via a local ADR. Plus the git-mv stage-before-commit note.
+- **Manifest adopt-exemption** in `lint-docs.py`: files carried in `.kit-manifest.json` with
+  `action: "adopt"` (a pre-existing corpus adopted in place) are exempt from the schema-class rules
+  (front-matter presence/validity, provenance, staleness) but remain subject to rule-13 index
+  completeness. Malformed/absent manifest = no exemptions, no crash.
+
 ## 0.3.0-dev — 2026-07-10
 
 Wave-3 pass: shipped the gate-runner **agents-starter** crew and the **recurrence-guard** enforcement

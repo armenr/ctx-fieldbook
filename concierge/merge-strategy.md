@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [concierge, merge, never-clobber, manifest, rollback]
 related: [scaffold-plan, interview, profiles]
 ---
@@ -57,8 +57,11 @@ their own instructions), we ADD to it, never overwrite it.
    the constitution as un-wired in the manifest).
 6. **Version matching.** The `kit:start` line carries the kit version, which changes across upgrades —
    so any operation that must FIND the kit's block (idempotency check, upgrade, uninstall) matches on
-   the `kit:start` prefix, e.g. `<!-- kit:start \(fieldbook [^)]*\) -->`, never on an exact one-version
-   string. When rewriting the block, stamp the current `kit-version.txt` value into the new start marker.
+   the `kit:start` prefix, e.g. `<!-- kit:start \([^)]*\) -->`, never on an exact one-version string.
+   A leak-gated public fork MAY instead stamp the sanctioned nameless variant
+   `<!-- kit:start (<kit-version>) -->` (label dropped, version kept — ADR-0011); the label is optional
+   and matching is prefix-only, so named and nameless blocks are found and replaced interchangeably.
+   When rewriting the block, stamp the current `kit-version.txt` value into the new start marker.
 
 ### Foreign marker blocks
 

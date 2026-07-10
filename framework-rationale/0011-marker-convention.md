@@ -2,7 +2,7 @@
 provenance: kit-template
 status: accepted
 created: 2026-07-09
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 related: [0001-in-repo-context-system]
 tags: [meta, framework, install, markers, merge]
 ---
@@ -56,6 +56,17 @@ managed seam: preserved byte-verbatim, never merged into, never removed —
 the kit block is inserted after them. The manifest's recorded paths remain
 authoritative over any pattern matching.
 
+**Nameless variant (leak-gated public repos).** A repo published where even the
+product label is leak-sensitive MAY write the nameless stamp
+`<!-- kit:start (<kit-version>) -->` — the parenthesized label dropped, the
+version retained. This is a sanctioned keep-local / documented-variant (recorded
+as such a row in the adoption plan), not a second convention: the label is
+OPTIONAL and **matching is unchanged** — every lifecycle operation still finds
+the block by the `<!-- kit:start (` prefix with the label optional
+(`<!-- kit:start \([^)]*\) -->`), so a named block and a nameless one are
+interchangeable for replace-in-place. `merge-tool.py`'s `--marker-label` writes
+it (empty label = nameless).
+
 ## Consequences
 
 - `merge-strategy.md`, `scaffold-plan.md`, the install/kit-upgrade skills, and
@@ -65,3 +76,9 @@ authoritative over any pattern matching.
   to exist) would be handled by kit-upgrade's retro-adoption branch, which
   classifies unrecognized-but-kit-shaped blocks for operator adjudication
   rather than pattern-matching them blind.
+- **Source-repo posture.** A repo that is the ORIGIN of the kit machinery fences
+  nothing it authored: with no kit-authored `CLAUDE.md` block there is no seam to
+  write, so the fence step is skipped entirely and kit lifecycle treats
+  `CLAUDE.md` as never-kit-owned. Its retro-adoption runs inventory+classify over
+  the back-ported subset only, marks its own inventions UPSTREAM, and manifests
+  only genuinely-adopted rows.

@@ -355,6 +355,10 @@ ledger entry) · `supersede` (doc → archive w/ named successor) · `lint`. The
 14. **Checkpoint integrity:** files in `checkpoints/` contain all ten numbered §6 points. *(ADVISORY)*
 15. **WU resolution:** a `work-unit:` value resolves to a known WU in `now/work-plan.md`. *(ADVISORY)*
 
+> **Adopt-exemption.** Pre-existing docs retro-adopted in place (manifest `action: adopt`) predate the
+> kit and carry no kit front-matter: the schema rules above are waived for them, but rule 13 (index
+> completeness) still applies — an adopted doc must appear in its dir's `index.md`.
+
 A Tier-2 substantive review (a clean-context reviewer, §7.2) checks beyond schema.
 
 ---

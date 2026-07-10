@@ -26,9 +26,14 @@
 #   linting those as if instantiated would flag the kit itself. The ADR/checkpoint body rules are keyed
 #   on directory + filename shape (`decisions/NNNN-*.md`, `checkpoints/DATE-*.md`), so a template in
 #   `templates/` is never mistaken for the real artifact.
+#
+# Adopt-exemption: docs recorded `action: adopt` in `<root>/.kit-manifest.json` predate the kit and carry
+#   no kit front-matter — the schema-class rules (1,2,3,4,5,6,10,12) are skipped for them; rule 13 (index
+#   completeness) still applies so they stay visible. Missing/malformed manifest ⇒ no exemptions, no crash.
 
 import argparse
 import datetime
+import json
 import os
 import re
 import sys
@@ -66,6 +71,12 @@ RULES = {
 
 FAIL = "FAIL"
 WARN = "WARN"
+
+# Schema-class rules (front-matter presence + field validity + provenance enum + staleness). These are
+# the rules waived for retro-adopted docs (manifest `action: adopt`) — a pre-existing flat corpus that
+# predates the kit and carries no kit front-matter. Everything else (notably rule 13 index completeness)
+# still applies to them; see load_adopted_paths() and the post-filter in main().
+SCHEMA_CLASS_RULES = frozenset({1, 2, 3, 4, 5, 6, 10, 12})
 
 # Rule 12 (staleness) is a doc-freshness signal, shipped WARN-only so a stale-but-correct doc never
 # hard-fails a commit / CI gate. CONVENTIONS notes a 90d *fail* threshold; --fail-days changes the
@@ -561,6 +572,42 @@ def check_index_completeness(root, findings):
 WU_RE = re.compile(r"\bWU-\d{3,4}\b")
 
 
+def load_adopted_paths(root):
+    """Root-relative paths (os.sep) for `<root>/.kit-manifest.json` files[] rows with action == 'adopt'.
+
+    Retro-adopted docs predate the kit and carry no kit front-matter; the SCHEMA_CLASS_RULES are dropped
+    for them (they stay subject to rule 13 index completeness). Manifest paths are recorded relative to
+    the target REPO ROOT (the parent of --root, e.g. `.agent-docs/reference/foo.md`), so they are mapped
+    back to root-relative form to match Finding.path. A missing/malformed manifest yields no exemptions
+    and never raises.
+    """
+    manifest = os.path.join(root, ".kit-manifest.json")
+    try:
+        with open(manifest, "r", encoding="utf-8", errors="replace") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return set()
+    if not isinstance(data, dict):
+        return set()
+    rows = data.get("files")
+    if not isinstance(rows, list):
+        return set()
+    target_root = os.path.dirname(root)
+    adopted = set()
+    for row in rows:
+        if not isinstance(row, dict) or row.get("action") != "adopt":
+            continue
+        p = row.get("path")
+        if not isinstance(p, str) or not p.strip():
+            continue
+        abs_p = os.path.normpath(os.path.join(target_root, p))
+        try:
+            adopted.add(os.path.relpath(abs_p, root))
+        except ValueError:
+            continue
+    return adopted
+
+
 def load_workplan_wus(root):
     for cand in ("now/work-plan.md", "now/work-plan.template.md"):
         p = os.path.join(root, cand)
@@ -624,6 +671,14 @@ def main(argv=None):
     for path in iter_markdown(root):
         check_document(path, root, findings, now_date, args.warn_days, args.fail_days, workplan_wus)
     check_index_completeness(root, findings)
+
+    # Adopt-exemption: retro-adopted docs (manifest `action: adopt`) predate the kit and carry no kit
+    # front-matter, so drop their schema-class findings. Rule 13 (index completeness) is NOT in the
+    # schema-class set, so adopted docs remain fully subject to it.
+    adopted = load_adopted_paths(root)
+    if adopted:
+        findings = [f for f in findings
+                    if not (f.rule in SCHEMA_CLASS_RULES and f.path in adopted)]
 
     # Report, grouped by rule.
     n_fail = sum(1 for f in findings if f.level == FAIL)

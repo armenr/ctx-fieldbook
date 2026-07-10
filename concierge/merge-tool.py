@@ -28,9 +28,11 @@
 # What it can do in one invocation (all consent-gated upstream by the concierge):
 #   --block FILE          marker-merge a pre-filled kit block into <target>/CLAUDE.md, wrapped in
 #                         `<!-- kit:start (fieldbook <ver>) -->` … `<!-- kit:end -->` (--kit-version
-#                         supplies <ver>). A prior kit block of ANY version is replaced in place;
-#                         foreign marker blocks (someone else's begin/end pair) are preserved verbatim
-#                         and the kit block is appended after them.
+#                         supplies <ver>; --marker-label overrides the label, empty = the nameless
+#                         `kit:start (<ver>)` variant for leak-gated public repos). A prior kit block
+#                         of ANY version AND EITHER label form is replaced in place; foreign marker
+#                         blocks (someone else's begin/end pair) are preserved verbatim and the kit
+#                         block is appended after them.
 #   --hooks-json FILE     union-append an {event: [entries]} fragment into settings.json hooks arrays,
 #                         de-duplicated on the exact command string.
 #   --allow FILE          union a permission allowlist (JSON array, or {"allow": [...]}) into
@@ -44,7 +46,7 @@
 #
 # Exit status: 0 on success (including all-skips); 2 on any usage / input / refuse-to-clobber error.
 #
-# provenance: kit-template · created 2026-07-09 · last-modified 2026-07-09
+# provenance: kit-template · created 2026-07-09 · last-modified 2026-07-10
 
 import argparse
 import copy
@@ -55,17 +57,24 @@ import re
 import sys
 from pathlib import Path
 
-# The kit's CLAUDE.md marker seam. The version stamp inside the parens changes across upgrades, so we
-# always FIND a prior block by prefix-regex, never by exact string (merge-strategy.md §1.6).
+# The kit's CLAUDE.md marker seam. BOTH the label and the version stamp inside the parens vary: the
+# version changes across upgrades, and the label is OPTIONAL — a leak-gated public repo may write the
+# nameless `kit:start (<ver>)` form (ADR-0011). So we always FIND a prior block by the `kit:start (`
+# prefix with the label optional, never by an exact string (merge-strategy.md §1.6). That makes
+# replacement cross-form: a named block is found and replaced in place by a nameless-label run, and a
+# nameless block by a named-label run.
 KIT_END = "<!-- kit:end -->"
 
 
-def kit_start(version):
-    return f"<!-- kit:start (fieldbook {version}) -->"
+def kit_start(version, label="fieldbook"):
+    """Render the kit:start stamp. A non-empty LABEL writes `kit:start (<label> <ver>)`; an empty
+    label writes the nameless `kit:start (<ver>)` sanctioned for leak-gated public repos (ADR-0011)."""
+    stamp = f"{label} {version}" if label else version
+    return f"<!-- kit:start ({stamp}) -->"
 
 
 KIT_BLOCK_RE = re.compile(
-    r"<!-- kit:start \(fieldbook [^)]*\) -->.*?<!-- kit:end -->", re.DOTALL
+    r"<!-- kit:start \([^)]*\) -->.*?<!-- kit:end -->", re.DOTALL
 )
 
 
@@ -131,7 +140,7 @@ def plan_claude_md(target, args):
     path = target / "CLAUDE.md"
     rel = "CLAUDE.md"
     body = read_input_text(args.block, "block").strip("\n")
-    new_block = f"{kit_start(args.kit_version)}\n{body}\n{KIT_END}"
+    new_block = f"{kit_start(args.kit_version, args.marker_label)}\n{body}\n{KIT_END}"
     if path.exists():
         before = path.read_text(encoding="utf-8")
         after = merge_block(before, new_block)
@@ -402,6 +411,9 @@ def build_parser():
                     help="pre-filled CLAUDE.md kit block body; wrapped in versioned kit markers")
     ap.add_argument("--kit-version", metavar="VER",
                     help="kit version stamped into the kit:start marker (required with --block)")
+    ap.add_argument("--marker-label", metavar="LABEL", default="fieldbook",
+                    help="label inside the kit:start stamp (default: fieldbook); pass an empty string "
+                         "to write the nameless 'kit:start (<ver>)' variant for leak-gated public repos")
     ap.add_argument("--hooks-json", metavar="FILE",
                     help="{event: [entries]} hooks fragment union-merged into settings.json")
     ap.add_argument("--allow", metavar="FILE",
