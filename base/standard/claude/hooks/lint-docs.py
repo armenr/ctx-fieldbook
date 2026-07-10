@@ -16,6 +16,7 @@
 # Exit status: 0 when clean (or warnings only); 1 when any FAIL was reported. Warnings never fail.
 #
 # CLI: lint-docs.py [--root DIR] [--now YYYY-MM-DD] [--warn-days N] [--fail-days N]
+#                   [--extra-id-prefixes S,U,AR,NS]
 #
 # What gets linted, and the template stance (documented choice):
 #   The linter walks every `*.md` under --root. INSTANTIATED docs get the full rule set. Kit-shipped
@@ -31,8 +32,11 @@
 #   artifact.
 #
 # Adopt-exemption: docs recorded `action: adopt` in `<root>/.kit-manifest.json` predate the kit and carry
-#   no kit front-matter — the schema-class rules (1,2,3,4,5,6,10,12) are skipped for them; rule 13 (index
-#   completeness) still applies so they stay visible. Missing/malformed manifest ⇒ no exemptions, no crash.
+#   no kit front-matter — the schema-class rules (1,2,3,4,5,6,10,12,14) are skipped for them; rule 13
+#   (index completeness) still applies so they stay visible. Rule 14 (checkpoint integrity) is exempt for
+#   the same write-once reason: a checkpoint authored before the ten-point format cannot be retro-edited to
+#   add the points, so an adopted row must exempt it — while a freshly-written checkpoint is never adopted
+#   and stays fully checked. Missing/malformed manifest ⇒ no exemptions, no crash.
 
 import argparse
 import datetime
@@ -52,7 +56,11 @@ REQUIRED_FIELDS = ("provenance", "created", "last-modified")
 # Front-matter fields whose values name other docs that must resolve on disk (CONVENTIONS rule 8).
 REFERENCE_FIELDS = ("related", "supersedes", "superseded-by", "archived-from")
 # Typed ID prefixes that are cross-references, NOT files (they resolve to a ledger row, not a path).
-ID_PREFIX_RE = re.compile(r"^(OQ|WU|LP|RV|FR|R|INC)-", re.IGNORECASE)
+# REV (reviews subsystem — REV-NNN, Standard tier since 0.2.0) is DISTINCT from RV (REVISIT anchors); both
+# are listed, ordered longest-first (REV before RV before R) so `REV-001` is matched by REV and never
+# swallowed by the shorter RV / R alternatives. The trailing `-` already disambiguates, but longest-first
+# keeps that correctness independent of the anchoring detail.
+ID_PREFIX_RE = re.compile(r"^(OQ|WU|LP|REV|RV|FR|R|INC)-", re.IGNORECASE)
 
 RULES = {
     1: "front-matter present + parseable",
@@ -77,11 +85,14 @@ RULES = {
 FAIL = "FAIL"
 WARN = "WARN"
 
-# Schema-class rules (front-matter presence + field validity + provenance enum + staleness). These are
-# the rules waived for retro-adopted docs (manifest `action: adopt`) — a pre-existing flat corpus that
-# predates the kit and carries no kit front-matter. Everything else (notably rule 13 index completeness)
-# still applies to them; see load_adopted_paths() and the post-filter in main().
-SCHEMA_CLASS_RULES = frozenset({1, 2, 3, 4, 5, 6, 10, 12})
+# Schema-class rules (front-matter presence + field validity + provenance enum + staleness), PLUS rule 14
+# (checkpoint integrity). These are the rules waived for retro-adopted docs (manifest `action: adopt`) —
+# a pre-existing flat corpus that predates the kit and carries no kit front-matter. Rule 14 is waived for
+# the write-once reason: a checkpoint authored before the ten-point format cannot be retro-edited to pass,
+# so an adopted row exempts it — a freshly-written checkpoint is never adopted and stays fully checked.
+# Everything else (notably rule 13 index completeness) still applies to them; see load_adopted_paths() and
+# the post-filter in main().
+SCHEMA_CLASS_RULES = frozenset({1, 2, 3, 4, 5, 6, 10, 12, 14})
 
 # Rule 12 (staleness) is a doc-freshness signal, shipped WARN-only so a stale-but-correct doc never
 # hard-fails a commit / CI gate. CONVENTIONS notes a 90d *fail* threshold; --fail-days changes the
@@ -303,8 +314,14 @@ def parse_date(s):
         return None
 
 
-def resolve_reference(ref, doc_path, root):
-    """True if a reference token resolves to an existing file (or is a non-file typed ID)."""
+def resolve_reference(ref, doc_path, root, extra_id_re=None):
+    """True if a reference token resolves to an existing file (or is a non-file typed ID).
+
+    `extra_id_re`, when supplied, is a compiled regex of caller-declared LOCAL typed-ID prefixes
+    (--extra-id-prefixes); a token matching it is treated as a resolvable non-file ledger id, exactly like
+    the canonical OQ-/WU-/… set. This is the upgrade-safe seam for spines the kit deliberately does not
+    canonize — a flag in the caller's wiring, not an edit to (or fork of) this linter.
+    """
     if not isinstance(ref, str):
         return True
     ref = ref.strip()
@@ -330,8 +347,11 @@ def resolve_reference(ref, doc_path, root):
             and fn.endswith(".md")
             for fn in os.listdir(dec)
         )
-    # Other typed IDs (OQ/WU/LP/…) are ledger rows, not files — treat as resolvable.
+    # Other typed IDs (OQ/WU/LP/…) are ledger rows, not files — treat as resolvable. Caller-declared local
+    # spines (--extra-id-prefixes) get the same treatment via extra_id_re.
     if ID_PREFIX_RE.match(ref):
+        return True
+    if extra_id_re is not None and extra_id_re.match(ref):
         return True
     # Bare stem -> <doc_dir>/<ref>.md or <root>/<ref>.md
     for base in (doc_dir, root):
@@ -340,7 +360,8 @@ def resolve_reference(ref, doc_path, root):
     return False
 
 
-def check_document(path, root, findings, now_date, warn_days, fail_days, workplan_wus):
+def check_document(path, root, findings, now_date, warn_days, fail_days, workplan_wus,
+                   extra_id_re=None):
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as fh:
             text = fh.read()
@@ -456,7 +477,7 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
     # Rule 8 — reference fields resolve.
     for fld in REFERENCE_FIELDS:
         for ref in as_list(fields.get(fld)):
-            if not resolve_reference(ref, path, root):
+            if not resolve_reference(ref, path, root, extra_id_re):
                 findings.append(Finding(8, FAIL, rpath, field_line.get(fld, 1),
                                         "%s reference '%s' does not resolve to a file" % (fld, ref)))
 
@@ -695,6 +716,10 @@ def main(argv=None):
                     help="now/ staleness warn threshold in days (default: 7)")
     ap.add_argument("--fail-days", type=int, default=90,
                     help="now/ staleness hard-stale threshold in days (default: 90)")
+    ap.add_argument("--extra-id-prefixes", default=None,
+                    help="comma-separated LOCAL typed-ID prefixes (e.g. S,U,AR,NS) to ALSO recognize as "
+                         "resolvable non-file ledger ids for rule 8 — for spines the kit does not canonize. "
+                         "Upgrade-safe: wire it into the caller, no linter edit / keep-local fork needed.")
     args = ap.parse_args(argv)
 
     root = os.path.abspath(args.root)
@@ -709,11 +734,22 @@ def main(argv=None):
             sys.stderr.write("lint-docs: --now '%s' is not YYYY-MM-DD\n" % args.now)
             return 2
 
+    # Caller-declared LOCAL typed-ID prefixes (--extra-id-prefixes) → one compiled alternation, ordered
+    # longest-first so a short prefix never swallows a longer one that shares its stem.
+    extra_id_re = None
+    if args.extra_id_prefixes:
+        prefixes = sorted((p.strip() for p in args.extra_id_prefixes.split(",") if p.strip()),
+                          key=len, reverse=True)
+        if prefixes:
+            extra_id_re = re.compile(r"^(?:%s)-" % "|".join(re.escape(p) for p in prefixes),
+                                     re.IGNORECASE)
+
     findings = []
     workplan_wus = load_workplan_wus(root)
 
     for path in iter_markdown(root):
-        check_document(path, root, findings, now_date, args.warn_days, args.fail_days, workplan_wus)
+        check_document(path, root, findings, now_date, args.warn_days, args.fail_days, workplan_wus,
+                       extra_id_re)
     check_index_completeness(root, findings)
     check_adr_prefix_advisory(root, findings)
 

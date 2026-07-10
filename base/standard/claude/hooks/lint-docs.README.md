@@ -21,7 +21,7 @@ deterministic and reproducible in CI.
 ## Usage
 
 ```
-lint-docs.py [--root DIR] [--now YYYY-MM-DD] [--warn-days N] [--fail-days N]
+lint-docs.py [--root DIR] [--now YYYY-MM-DD] [--warn-days N] [--fail-days N] [--extra-id-prefixes LIST]
 ```
 
 | Flag | Default | Meaning |
@@ -30,6 +30,7 @@ lint-docs.py [--root DIR] [--now YYYY-MM-DD] [--warn-days N] [--fail-days N]
 | `--now YYYY-MM-DD` | *(unset)* | Reference date for the `now/` staleness rule. **Omit to skip staleness** — the linter never invents a clock. |
 | `--warn-days N` | `7` | `now/` age (days) above which a doc warns. |
 | `--fail-days N` | `90` | `now/` age (days) above which a doc is "hard-stale" (still a WARN — see rule 12). |
+| `--extra-id-prefixes S,U,…` | *(unset)* | Comma-separated **local** typed-ID prefixes to also treat as resolvable non-file ledger ids for rule 8 (see the rule-8 note). For spines the kit deliberately does not canonize; wire it into the caller — no linter edit. |
 
 **Exit status:** `0` when clean (or warnings only) · `1` when any `FAIL` was reported · `2` on a usage
 error (bad `--root`, bad `--now`). **Warnings never change the exit code.** Output is grouped by rule.
@@ -73,11 +74,23 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
   one-nested) content dirs under `--root`, **excluding `now/` and `templates/`**.
 - **Rule 8 resolution.** A bare id resolves to `<dir>/<id>.md` or `<root>/<id>.md`; a path-like token
   (`../x/y.md`) resolves relative to the doc then to root; `ADR-NNNN` resolves to `decisions/NNNN-*.md`
-  **or** `decisions/ADR-NNNN-*.md` (the filename prefix is optional — see rule 16); other typed ledger
-  ids (`OQ-`, `WU-`, `LP-`, …) are treated as resolvable non-file references.
+  **or** `decisions/ADR-NNNN-*.md` (the filename prefix is optional — see rule 16); the canonical typed
+  ledger ids (`OQ-`, `WU-`, `LP-`, `REV-`, `RV-`, `FR-`, `R-`, `INC-`) are treated as resolvable non-file
+  references. **`REV-`** (reviews subsystem — `REV-NNN`, Standard tier) is distinct from **`RV-`** (REVISIT
+  anchors); the alternation is ordered longest-first so `REV-` is never swallowed by `RV-`/`R-`. To also
+  recognize **local** spines the kit deliberately does not canonize (e.g. a slice/unit `S-`/`U-` spine),
+  pass `--extra-id-prefixes S,U,…` — those prefixes then get the same resolvable-ledger-id treatment. It is
+  an extension seam in the caller's wiring, so it stays upgrade-safe (no keep-local fork of the linter).
 - **Rule 16 (ADR-prefix advisory) ships WARN-only.** An adopter whose ADR files are named
   `ADR-NNNN-slug.md` is fully recognized — the ADR rules run and references resolve either way — but
   one advisory per run names the canonical unprefixed form, so drift converges without a forced rename.
+- **Adopt-exemption (retro-adopted corpus).** Docs recorded `action: adopt` in
+  `.agent-docs/.kit-manifest.json` predate the kit and carry no kit front-matter, so the schema-class
+  rules (1, 2, 3, 4, 5, 6, 10, 12) **plus rule 14 (checkpoint integrity)** are skipped for those paths;
+  rule 13 (index completeness) still applies so they stay visible. Rule 14 is exempt because checkpoints
+  are **write-once**: a checkpoint authored before the ten-point format cannot be retro-edited to pass, so
+  an adopted row must exempt it — while a freshly-written checkpoint is never adopted and stays fully
+  checked. A missing or malformed manifest yields no exemptions and never crashes the run.
 
 ## What gets linted — the template stance (documented choice)
 
