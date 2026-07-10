@@ -42,7 +42,7 @@ Load `.agent-docs/.kit-manifest.json`. For each recorded file, the `action` dete
 | Recorded `action` | Reverse |
 |---|---|
 | `create` / `copy` / `generate` (a kit-authored file) | **delete** it |
-| `merge` (existing file the kit spliced into — `CLAUDE.md`, `.claude/settings.json`) | **restore** from its `backup-path`; if no backup, surgically remove only the kit region (§3) |
+| `merge` (existing file the kit spliced into — `CLAUDE.md`, `.claude/settings.json`) | **restore** from its `backup` (the canonical §4 field name — never `backup-path`; the file lives under `.kit-backups/<ts>/` at the repo root); if no backup, surgically remove only the kit region (§3). After both restores, the spent `.kit-backups/` dir is residue — OFFER to remove it (default: keep) and surface it in the §7 report either way |
 
 Sort into a plan and SHOW it before removing anything:
 

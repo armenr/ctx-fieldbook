@@ -19,7 +19,8 @@ and reversibly. **Do not summarize the kit; run the install.**
 - **Never clobber.** An existing `CLAUDE.md` / `.claude/settings.json` / `.claude/*` is backed up,
   marker-blocked (`<!-- kit:start (fieldbook <kit-version>) -->` … `<!-- kit:end -->`), and deep-merged (union permissions, append hook
   arrays) — shown as a diff, applied only on an explicit yes.
-- **Manifest as-you-go.** Record every action — action (create/merge) · sha256 · backup-path, plus
+- **Manifest as-you-go.** Record every action — action (create/merge) · sha256 · backup (the canonical
+  §4 field name — never `backup-path`), plus
   kit-version · profile · stack — to `.agent-docs/.kit-manifest.json` **as it happens**. This is what makes
   an interrupted install resumable or roll-back-able and a re-run idempotent.
 - **Explicit yes before any destructive or merge step.** No silent writes, ever. Explain WHY in one clause; don't lecture.

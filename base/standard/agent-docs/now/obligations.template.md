@@ -95,4 +95,3 @@ related: [status, work-plan, open-questions, handoff]
 <!-- example:start · delete on your first real entry (a settlement, before it folds to log.md) -->
 - ~~repo-b · shared event-schema doc~~ — SETTLED 2026-07-09 (received; filed as `reference/event-schema.md`; closes `OQ-014`) — msg 9c1d-40
 <!-- example:end -->
-</content>

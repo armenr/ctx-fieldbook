@@ -77,24 +77,25 @@ Copy the profile's `.agent-docs/` payload (additively — `profiles.md` §1–3 
     template is not in the payload — the inter-party obligations ledger rides as a compact `## Obligations`
     section inside `now/handoff.md` (the `/handoff` §8.5 form: both directions, `obligations.template.md`
     schema, lighter presentation). Ensure the seeded `now/handoff.md` carries a starter `## Obligations`
-    section — a no-op if the handoff template already ships the stub, else append the empty section so the
-    first `/orient` has a surface to read. No standalone file and no `now/index.md` obligations row in this
-    case.
+    section — the handoff template SHIPS the stub (verify it survived the fill; on an older seed, append
+    it) so the first `/orient` has a surface to read. No standalone file in this case; the `now/index.md`
+    obligations routing row ships conditionally-phrased REGARDLESS of form (the handoff.md-before-it-exists
+    precedent) — leave it, it is not a lint lie.
 1.2 **Standard payload** (`base/standard/agent-docs/`, if profile ≥ standard): COPY-VERBATIM
     `checkpoints/index.md`, `memories/index.md`, `reference/index.md`, and `reviews/index.md` (all ship
     as seed stubs — the root catalog routes to `reference/` and `reviews/` at Standard, so their indexes
     must be present for rule 13). Also COPY-VERBATIM `templates/review-template.md` into the already-
     installed `templates/` dir (one `REV-NNN` report per review pass; no tokens).
-    - **`templates/index.md` catalog row for `review-template.md`:** the review template joins the
-      Minimal `templates/` dir, so its catalog row must be added to `templates/index.md` in the same
-      change (rule 13 index-completeness). *No Standard `templates/index.md` fragment ships yet to carry
-      that row — see the openIssue; until it does, the concierge appends the row by hand.*
+    - **`templates/index.md` catalog row for `review-template.md`:** the row ALREADY SHIPS in the
+      Minimal `templates/index.md` (conditionally-phrased, like the `now/index.md` obligations row) —
+      VERIFY it survived the copy and add NOTHING; a hand-appended second row is a rule-13 duplicate.
 1.2b **Obligations ledger — FILE form** (the manifest `multi_party: true` case; Standard+ only, since the
     template is Standard payload; ADR-0012). When `multi_party` is `true`, FILL+RENAME
     `base/standard/agent-docs/now/obligations.template.md` → `now/obligations.md` (fill `{{PROJECT_NAME}}`
-    — the ONLY scalar it carries; drop `.template`; delete the template's `<!-- example … -->` rows per its
-    first-use note). Add its routing row to `now/index.md` in the SAME change (ADR-0005 same-change rule;
-    `now/` is rule-13-exempt, so the row is lint-safe whether or not the file is present). Do NOT also seed
+    — the ONLY scalar it carries; drop `.template`; delete the INSTANTIATION comment block — it is spent —
+    but RETAIN the `<!-- example … -->` rows: they teach the schema, lint rule 17 skips them, and the
+    ADOPTER deletes them on first real entry per the template's own first-use note). Its routing row
+    already ships in `now/index.md` conditionally-phrased — VERIFY, add nothing. Do NOT also seed
     the handoff `## Obligations` section (1.1b) — the file IS the ledger now; the two forms are
     schema-equivalent and never both live at once. At Full the recommendation LEANS toward this file form,
     but the manifest's detected/confirmed `multi_party` governs (never "auto") — including the DOWN
@@ -121,6 +122,13 @@ dry-run plan and the manifest are stable across runs.
 2.1 **Rules** — Minimal: COPY `rules/agent-docs.md`, `rules/sensitive-data.md`. Standard+: FILL
     `rules/standing-rules-core.md` (`{{WORKSPACE_LAYOUT}}`, `{{PANIC_EQUIVALENT}}`, gate cmds,
     `{{CODE_INTEL_TOOL}}`), COPY `rules/standing-rules-rationale.md`.
+2.1a **Stack pack** (Standard+; the two files `profiles.md` §"stack" promises this plan places —
+    they carry the language quality discipline + the IMPL→WIRED reachability-prover menu):
+    FILL `stacks/<stack>/rules.md` → `.claude/rules/<stack>-rules.md` and
+    FILL `stacks/<stack>/code-intel.md` → `.claude/rules/<stack>-code-intel.md` (both may carry the
+    gate-cmd scalars; the `<stack>-` prefix keeps them distinct from the kit-core rules files).
+    Minimal: skip (no standing-rules layer to bind them to). Without this step the
+    `{{CODE_INTEL_TOOL}}` pointers in standing-rules dangle at nothing.
 2.1b **Scripts** — Standard+: COPY-VERBATIM `base/standard/scripts/wu-refs.sh` → `scripts/wu-refs.sh`
     (`chmod +x`) — the cycle-start inbound-reference sweep the standing-rule invokes (`git grep`-only, no
     tokens to FILL). Minimal: skip (the sweep pairs with the Standard+ orchestration discipline).

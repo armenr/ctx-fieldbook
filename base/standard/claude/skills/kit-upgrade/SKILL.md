@@ -175,8 +175,11 @@ is consent-gated and shown before it runs.
   `now/obligations.md` from the shipped `obligations.template.md` (fill the project-name scalar, drop the
   `.template` suffix) and **migrate the handoff `## Obligations` rows into it field-for-field** — receivables
   keep *Counterparty · What · Class · Trigger/by-when · Default-if-silent · Source*; debts keep *Counterparty
-  · What · Class · Due/trigger · Source* (no field dropped, no strength re-graded). Remove the section from
-  `handoff.md`, add the `now/index.md` routing row in the SAME change (ADR-0005), and flip `multi_party`
+  · What · Class · Due/trigger · Source* (no field dropped, no strength re-graded). Remove the section
+  from `handoff.md` CAREFULLY: it may sit ANYWHERE, including LAST (a seeded section is often appended
+  at EOF) — remove header-to-next-section-OR-EOF and verify zero `## Obligations` matches remain; a
+  next-section-only pattern silently no-ops on the EOF case and leaves BOTH forms live. Then VERIFY the
+  `now/index.md` routing row (it ships conditionally-phrased — nothing to add) and flip `multi_party`
   true in the manifest header. **Idempotent:** a re-run that finds `now/obligations.md` already present and
   the section already gone no-ops.
 - **Retirement — file → section** (`multi_party` true → false; the DOWN empty-ceremony flip, ADR-0012). ONLY

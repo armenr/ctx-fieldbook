@@ -41,6 +41,20 @@ field-evidenced linter fixes.
   proven by planted violations, both directions.
 - **SessionStart snippet hardened:** a crashed linter now emits a fallback advisory line
   instead of silently emptying the nudge under `|| true` (the silent-vacuity class, again).
+- **P8 release-verification fixes** (first full end-to-end concierge exercise — two throwaway
+  repos, install → uninstall byte-identical reversal + single-party install → comms-gained →
+  section→file promotion, adversarially audited): stray `</content>` tag removed from the
+  obligations template's last line; scaffold-plan gains the missing stack-pack placement step
+  (2.1a — `stacks/<lang>/{rules,code-intel}.md` → `.claude/rules/<lang>-*`, previously dropped
+  by a doc-literal install); handoff template now ships the `## Obligations` single-party stub
+  (kills the hand-authoring variance); example rows RETAINED at install (rule 17 skips them;
+  the adopter deletes on first real use); stale `backup-path` field name corrected to the
+  canonical `backup` in uninstall.md + the install skill; `.kit-backups/` residue surfaced in
+  uninstall; duplicate review-template index-row instruction corrected (the row already ships);
+  go pack's `{{LINT_CMD}}` un-compounded (`golangci-lint run` subsumes `go vet`); promotion's
+  section-removal warned about the section-at-EOF silent no-op (found by the field-preservation
+  re-proof, which now passes from committed artifacts: every field carried, both directions,
+  idempotent re-run, live pre-commit gate green throughout).
 
 ## 0.3.2-dev — 2026-07-10
 

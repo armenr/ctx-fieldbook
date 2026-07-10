@@ -38,6 +38,16 @@ the next session can climb back up to the original objective. Surface this on "w
 |---|---|---|
 <!-- | <YYYY-MM-DD> | <the decision> | <ADR / commit / operator> | -->
 
+## Obligations (single-party form — omit this section when `now/obligations.md` exists)
+<!-- Compact inter-party ledger, both directions (ADR-0012; schema authority: the obligations
+     template — same fields, lighter shape). Waiting-on bullets: counterparty — what — HARD/SOFT —
+     trigger/by-when — default-if-silent (chase-once · apply-default · never-chase-never-peek;
+     apply-default FORBIDDEN on HARD operator/authorization rows) — source. I-owe bullets:
+     counterparty — what — HARD/SOFT — due/trigger — source. Settled: strike + stamp, journal to
+     log.md, prune. -->
+- **Waiting on (owed to me):** _(none yet)_
+- **I owe:** _(none yet)_
+
 ## Reading order
 <The 3–6 docs a resuming agent should read, in order, to reconstruct context.>
 

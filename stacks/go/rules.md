@@ -22,7 +22,7 @@ pack is the Go binding for the generic `{{BUILD_CMD}} / {{TEST_CMD}} / {{LINT_CM
 |---|---|
 | `{{BUILD_CMD}}` | `go build ./...` |
 | `{{TEST_CMD}}` | `go test ./...` (add `-race` for concurrent code — see below) |
-| `{{LINT_CMD}}` | `go vet ./...` **and** `golangci-lint run` |
+| `{{LINT_CMD}}` | `golangci-lint run` (subsumes `go vet` — its `govet` linter is on by default; a compound value would malform the single `Bash({{LINT_CMD}}:*)` allowlist entry) |
 | `{{FMT_CMD}}` | `gofmt -l .` (check, non-empty output = fail) · `gofmt -w .` (apply) |
 
 ## Lint & format gates (strict by decision, not preference)
