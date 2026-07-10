@@ -1,6 +1,6 @@
 ---
 name: kit-upgrade
-description: Reconcile an installed Fieldbook copy against a NEWER kit zip. Reads .agent-docs/.kit-manifest.json, 3-way diffs ONLY kit-owned files (skills/hooks/rules/templates/schema — never the colleague's content dirs), and uses sha256-vs-manifest so a file the colleague edited is treated as "theirs" (shows a diff, never overwrites). Bumps the recorded kit-version. When the manifest is MISSING but the tree is kit-lineage-shaped (hand-seeded / pre-kit port), emits a retro-adoption plan and backfills the manifest instead of stopping. Use when the author sends a newer Fieldbook zip, when a new kit's kit-version.txt is ahead of the installed one, or when upgrading/repairing an existing install. Consent-gated; shows a plan before writing.
+description: Reconcile an installed Fieldbook copy against a NEWER kit zip. Reads .agent-docs/.kit-manifest.json, 3-way diffs ONLY kit-owned files (skills/hooks/rules/templates/schema — never the colleague's content dirs), and uses sha256-vs-manifest so a file the colleague edited is treated as "theirs" (shows a diff, never overwrites). Bumps the recorded kit-version. Reconciles the obligations-ledger form (ADR-0012) against re-detected comms posture — promoting a handoff `## Obligations` section into a standalone now/obligations.md, or retiring an empty file back to a section, content-preserving and manifest-recorded. When the manifest is MISSING but the tree is kit-lineage-shaped (hand-seeded / pre-kit port), emits a retro-adoption plan and backfills the manifest instead of stopping. Use when the author sends a newer Fieldbook zip, when a new kit's kit-version.txt is ahead of the installed one, or when upgrading/repairing an existing install. Consent-gated; shows a plan before writing.
 provenance: kit-template
 created: 2026-07-03
 last-modified: 2026-07-10
@@ -156,6 +156,40 @@ bash -n .claude/hooks/pretooluse-safety-gates.sh 2>/dev/null && echo "gate synta
 Report: `/kit-upgrade <vX> -> <vY>: N fast-forwarded, M kept-yours, K conflicts resolved`. Note any
 file left as the colleague's own (so they know it won't track future kits until they re-adopt it), and
 recommend they review the diff and commit — **do NOT auto-commit.**
+
+## Obligations-form flip (`multi_party` — section ↔ file, content-preserving)
+
+The obligations ledger (ADR-0012) ships in one of two forms, recorded as the manifest header field
+`multi_party`: **true** → a standalone `now/obligations.md`; **false** → a compact `## Obligations`
+section inside `handoff.md`. An upgrade is the moment to reconcile that recorded form against the repo's
+CURRENT coordination posture — a repo that GAINED (or shed) a comms layer since install.
+
+**Re-detect first (read-only, the ADR-0012 signals).** Re-run the detect-then-confirm scan the concierge
+used at install: a foreign agent-comms marker block in `CLAUDE.md` (read-to-classify ONLY —
+`merge-strategy.md` §Foreign marker blocks; never edit inside), an agent-room CLI / config / log in the
+tree, else confirm with the colleague. If the detected posture matches the manifest's `multi_party`, there
+is nothing to flip — skip this section. If it disagrees, OFFER the matching flip; like every write here it
+is consent-gated and shown before it runs.
+
+- **Promotion — section → file** (`multi_party` false → true; the repo gained a comms layer). Instantiate
+  `now/obligations.md` from the shipped `obligations.template.md` (fill the project-name scalar, drop the
+  `.template` suffix) and **migrate the handoff `## Obligations` rows into it field-for-field** — receivables
+  keep *Counterparty · What · Class · Trigger/by-when · Default-if-silent · Source*; debts keep *Counterparty
+  · What · Class · Due/trigger · Source* (no field dropped, no strength re-graded). Remove the section from
+  `handoff.md`, add the `now/index.md` routing row in the SAME change (ADR-0005), and flip `multi_party`
+  true in the manifest header. **Idempotent:** a re-run that finds `now/obligations.md` already present and
+  the section already gone no-ops.
+- **Retirement — file → section** (`multi_party` true → false; the DOWN empty-ceremony flip, ADR-0012). ONLY
+  when the ledger holds **no live cross-party rows** — if any live row remains, do NOT retire; report and
+  hold. When it is empty of live rows: **journal any settled rows to `log.md`** (never silent-delete — the
+  ADR-0012 carve-out), fold the schema back into a compact `## Obligations` handoff section, remove
+  `now/obligations.md` and its `now/index.md` row, and flip `multi_party` false.
+
+Both directions are **content-preserving** (ADR-0008): content is moved or journaled, never dropped — a
+promotion that lost a row or a retirement that discarded a live one is a defect, not a degradation. Record
+the flip in the manifest as it happens, so an interrupted flip resumes and a re-run is idempotent. No skill
+re-fork is needed: `/handoff` and `/orient` already branch on whether `now/obligations.md` exists, so they
+read whichever surface the flip selected.
 
 ## Retro-adoption — manifest missing, tree kit-shaped
 

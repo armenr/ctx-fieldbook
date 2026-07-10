@@ -3,7 +3,7 @@ name: flush
 description: Mid-session housekeeping. The main agent updates .agent-docs/now/{status,work-plan,open-questions}.md + log.md to current reality, then continues working in the same session. Does NOT regenerate handoff.md, does NOT archive, does NOT auto-commit. Use when work has progressed and now/* has drifted but you're NOT ending the session.
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-10
 tags: [skill, lifecycle, flush]
 ---
 
@@ -87,6 +87,7 @@ Plus discrete-sub-work entries as warranted (`decision | ...`, `memory | ...`, `
 - **Hands-on artifacts / scratch prototypes built OUTSIDE the repo** (scratch dirs, throwaway packages, spike harnesses) → note location + pass/fail verdict + keep-or-clean in `status.md`/`log.md`, or promote a durable spike to `experiments/` (Full profile). They're in no git tree → silently lost otherwise.
 - **Ephemeral workflow / temp-dir outputs** worth keeping → rescue the synthesis to `reference/` (or note the durable transcript path + resume command); temp dirs clear.
 - **Operator rulings** this chunk → the `work-plan` decisions area + `log.md` `decision | ...`.
+- **Inter-party obligation changes** this chunk (a promise made / received, a receivable settled) → if `now/obligations.md` exists, update it in place (ADR-0012) — the mid-session mutate that keeps the ledger true between handoffs; otherwise the ledger rides the handoff `## Obligations` section, swept at `/handoff`.
 
 Don't wait for `/handoff` — by then the detail has decayed.
 

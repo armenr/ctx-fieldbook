@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [meta, schema, conventions]
 related: [index, glossary, CONVENTIONS-full-addendum]
 ---
@@ -65,7 +65,7 @@ where a dir's template mandates it (`now/lessons/`, `lessons/archive/`).
 
 | Dir | Holds | Write-discipline | Caps (GUIDANCE, not lint-enforced — see §Token-budget) |
 |---|---|---|---|
-| `now/` | Fleeting working state: `status.md` · `work-plan.md` (active board + backlog + completed) · `open-questions.md` (OQ-NNN single source; inline-RESOLVED threading) · `handoff.md` · `lessons/{MOC.md,proposals.md}` | UPDATE-IN-PLACE | 50–150 lines/file, hard 250. Drift >7d = lint warn, >90d = lint fail. |
+| `now/` | Fleeting working state: `status.md` · `work-plan.md` (active board + backlog + completed) · `open-questions.md` (OQ-NNN single source; inline-RESOLVED threading) · `handoff.md` · `obligations.md` (multi-party installs; single-party carries a handoff `## Obligations` section) · `lessons/{MOC.md,proposals.md}` | UPDATE-IN-PLACE | 50–150 lines/file, hard 250. Drift >7d = lint warn, >90d = lint fail. |
 | `decisions/` | ADRs (`ADR-NNNN`) — why we chose what; mandatory **Alternatives Considered** field | APPEND-ONLY (new ADRs) + status-UPDATE-IN-PLACE (existing ADRs change `status:`, never move) | 50–150 lines, hard 250. Stable IDs forever; supersession-not-deletion. |
 | `checkpoints/` | WRITE-ONLY timestamped **10-point zero-loss sitreps** (§6). The anti-naive-summarization tier. | WRITE-ONLY | One file per checkpoint, `YYYY-MM-DD-HHMMSS-<slug>.md`. Never edited; addendum = a NEW checkpoint referencing the prior. |
 | `lessons/` | Typed append-only ledger of lessons / near-misses (`LP-NNN`); `lessons/archive/` for superseded; a **quarantine** sub-section for model/harness-bound lessons | APPEND-ONLY (`status:` may change to `superseded`/`deprecated`) | Atomic entries; superseded → `lessons/archive/`. Read before action. |

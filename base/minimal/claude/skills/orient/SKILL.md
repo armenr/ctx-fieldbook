@@ -1,9 +1,9 @@
 ---
 name: orient
-description: Read .agent-docs/now/handoff.md and surface current session state. Use at session start, after time away, or when reorienting ("where are we?"). Pulls live git state at invocation, verifies the handoff isn't stale against git reality (code ahead of docs → trust the code), and runs a quick state-file health sweep (the folded-in /status check).
+description: Read .agent-docs/now/handoff.md and surface current session state. Use at session start, after time away, or when reorienting ("where are we?"). Pulls live git state at invocation, verifies the handoff isn't stale against git reality (code ahead of docs → trust the code), runs a quick state-file health sweep (the folded-in /status check), and surfaces obligations-ledger deltas — landed / came due / overdue / dangling — from now/obligations.md when it exists, else the handoff's Obligations section.
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [skill, lifecycle, orient]
 ---
 
@@ -47,6 +47,7 @@ If missing:
 - `.agent-docs/now/status.md`
 - `.agent-docs/now/work-plan.md`
 - `.agent-docs/now/open-questions.md`
+- `.agent-docs/now/obligations.md` *(if it exists; otherwise the handoff's `## Obligations` section carries the ledger)*
 
 ## 3.5 Quick state-file health sweep (the folded-in /status check)
 
@@ -57,12 +58,32 @@ A fast, no-deep-analysis health pass over the durable state surfaces — flag dr
 - **Open work-units / blockers** — count active `WU-NNNN` in `now/work-plan.md` and open `OQ-NNN` in `now/open-questions.md`.
 - **Index lint** — if the doc linter hook is installed (Standard profile) and it is cheap, note whether `python3 .claude/hooks/lint-docs.py --root .agent-docs` is clean; do NOT fix here.
 
+## 3.6 Obligations deltas (ADR-0012)
+
+The obligations ledger is the inbound/outbound inter-party debt record; at cold-start what matters is what MOVED while you were away. Read it — **if `now/obligations.md` exists**, that file; **otherwise the handoff's `## Obligations` section** — and compute the deltas against the git/time gap since the handoff was written.
+
+**Where to look — SAME sweep, same "what moved?" question, different surface:**
+- **If `now/obligations.md` exists:** **scan the repo's agent-comms log** (tool-generic — whatever coordination log the layer writes) for traffic since the last handoff; a row's `Source` message-id is your lookup key.
+- **Otherwise (the handoff `## Obligations` section):** **ask the operator** ("anything land while I was away?") and check each row's **named sources** — a commit now on disk, a PR / issue state, a dated conversation note. No comms log to scan; the row's `Source` cell is the pointer.
+- Safety is identical either way — surfacing an overdue still fires only the row's recorded `default-if-silent`, and a gate row (operator / authorization) never carries `apply-default` by construction.
+
+Then compute:
+
+- **Landed** — an *owed-to-me* receivable whose deliverable arrived (a cited commit/doc now exists on disk, a settled-strikethrough was added, or — file form — a settling message appears in the comms log) → you may be unblocked; say which HARD row cleared.
+- **Came due** — an *owed-by-me* debt whose Due/trigger has passed → you owe delivery now.
+- **Overdue** — an *owed-to-me* receivable past its `Trigger/by-when` with no settlement → apply its **default-if-silent**: `chase-once` → send the one ping; `apply-default` → proceed on the recorded fallback; `never-chase-never-peek` → record the disposition and move on. Name which default fired. (A gate row — operator / authorization — never carries `apply-default` by construction, so surfacing an overdue never auto-crosses a gate.)
+- **Dangling** — an *owed-to-me* row whose cited `OQ-`/`REV-` has since been resolved or removed by another path → the wait may already be moot; flag it "target closed — reconcile" rather than re-chase a settled thing.
+- **Rot risk** — any owed-to-me row with no parseable `Trigger/by-when` → flag it "cannot come due, will not be chased."
+
+Do NOT chase or settle here — `/orient` reads and surfaces; `/flush` and `/handoff` mutate.
+
 ## 4. Surface to user (concise — ~12 lines)
 
 - **TL;DR**: 1-2 sentences pulled from `status.md`
 - **Immediate Next Action**: verbatim from `handoff.md`
 - **Active open questions** that gate forward motion (typically 1-3 `OQ-NNN` from `open-questions.md`)
 - **Active work-unit(s)**: the `WU-NNNN` in flight
+- **Obligations deltas** *(from §3.6)*: one line — what **landed** (unblocked), what **came due** (you owe now), what's **overdue** (which default-if-silent fired), any **dangling / rot-risk** row. Omit if the ledger is absent or unchanged.
 - **Staleness / health flags** if any (from §2 + §3.5) — incl. "a `/sitrep` post-dates the handoff" if so
 - **Recent commits**: 3-5 lines from the live git state above
 

@@ -2,6 +2,46 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.4.0-dev — 2026-07-10
+
+The **obligations ledger** (ADR-0012) — the first kit surface tracking what an agent is
+**owed**, not just what it owes — plus the origin-posture rationale (ADR-0013) and two
+field-evidenced linter fixes.
+
+- **Inter-party debt ledger** (`framework-rationale/0012`): two directions (owed-by / owed-to),
+  direction-aware HARD/SOFT class, per-row promise `Source`, and the two novel fields — a
+  required, parseable **Trigger/by-when** and a required **default-if-silent** on every
+  receivable ({chase-once, apply-default, never-chase-never-peek}). Gate-safety hard
+  constraint: `apply-default` is forbidden on any HARD row whose counterparty is the operator
+  or whose deliverable is an authorization. Rows point at `OQ-`/`WU-`/`REV-`/DEFER ids, never
+  duplicate them; settled rows journal to `log.md` then prune.
+- **Form follows workload, detected at install:** multi-party coordination ⇒ standalone
+  `now/obligations.md` (template ships in the Standard overlay); single-party ⇒ a compact
+  `## Obligations` handoff section. Detection = foreign agent-comms marker block
+  (read-to-classify extension of the foreign-block rules) · agent-room CLI/config · the
+  interview's coordination question — detect-then-confirm both ways, recorded as a
+  `multi_party` manifest install-decision beside `kit_ref` (the twelve scalars stay twelve).
+  `kit-upgrade` owns both form flips (section→file promotion; empty-ceremony retirement).
+- **Skills wired:** `/handoff` sweeps the ledger (snapshot-before-mutate, atomic rows,
+  materiality gate — hedges never become rows, ambiguous strength files SOFT); `/orient`
+  surfaces landed / came-due / overdue + dangling-pointer and no-trigger rot checks; `/flush`
+  updates the file mid-session. All branches key on the runtime fact (does
+  `now/obligations.md` exist), never a scaffold token.
+- **Origin posture** (`framework-rationale/0013`, informational): how the kit's own origin
+  repo runs the discipline from a gitignored operator directory without contaminating the
+  authored payload; the origin self-install doubles as the release-verification discipline leg.
+- **lint-docs rule 17** (FAIL): every owed-to-me row carries a non-empty Trigger and a
+  canonical default-if-silent; example-marker rows skipped (prefix-matched markers — the
+  ADR-0011 lesson applied to its own new rule after a planted-violation proof caught the
+  exact-literal variant); absent file = silent pass; malformed table = one WARN, never a crash.
+- **Linter gaps from the field** (second adopter A/B evidence, verified firsthand in code):
+  rule-8 bare-slug resolution now reaches `now/` (scoped via `include_now` so rule-13 index
+  completeness is unchanged; ambiguity-FAIL remains the collision guard) and rule-9 no longer
+  ADR-classifies calendar-dated `YYYY-MM-DD-slug.md` artifacts outside `decisions/`. Both
+  proven by planted violations, both directions.
+- **SessionStart snippet hardened:** a crashed linter now emits a fallback advisory line
+  instead of silently emptying the nudge under `|| true` (the silent-vacuity class, again).
+
 ## 0.3.2-dev — 2026-07-10
 
 Post-harvest cherry-pick batch: the smalls nominated by the 0.3.x UPSTREAM sweep, plus a stale-label

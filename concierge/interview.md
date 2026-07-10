@@ -68,6 +68,18 @@ Run these against the target path. All read-only; none mutates anything.
 5. **Toolchain preflight** (degrade-not-brick): `command -v jq python3 git bash`. Missing `jq` →
    hooks self-disable (they're guarded); missing `python3` → the doc-schema linter is skipped. Note any
    gap in Q2 so the friend isn't surprised when a gate self-skips.
+6. **Multi-party coordination signals** — these pick the obligations-ledger FORM (ADR-0012). The result
+   is a **manifest install-decision (`multi_party`)**, NOT one of the twelve scalars. Read-only,
+   strongest-first:
+   - **(a) A foreign marker block in `<target>/CLAUDE.md`** whose body reads as an agent-comms protocol —
+     a message room, monitor/watch-arming lines, named agents + their reply discipline. `merge-strategy.md`
+     already treats such a block as *somebody else's managed seam*; **read it to CLASSIFY only, never edit
+     inside** (that preservation rule holds — this is the read-to-classify extension). A foreign block
+     describing agent coordination is the strongest signal a comms layer is already wired here.
+   - **(b) An agent-room CLI or its state / log file in the tree** — a coordination tool or its log
+     surfaced by this same read-only scan.
+   - Neither firing is not a "no" — it just means the Q4 coordination check (signal c) settles it.
+     Detect-then-confirm; the friend can always overrule.
 
 ---
 
@@ -90,6 +102,7 @@ Present ONE table. Every row is detected + editable. This replaces five separate
 | Workspace layout | `<single-package \| multi-package: a/ b/ c/>` | `{{WORKSPACE_LAYOUT}}` |
 | Existing context files | `<none \| CLAUDE.md \| .claude/settings.json \| .agent-docs/ ...>` | — (drives merge) |
 | Toolchain | `jq <ok\|MISSING> · python3 <ok\|MISSING>` | — (drives graceful-degrade note) |
+| Multi-party coordination | `<comms block in CLAUDE.md \| agent-room tooling \| none detected>` | — (manifest `multi_party` → obligations form) |
 
 - **Correcting a row = one edit.** The friend replies "test is `<x>`" and you swap that one value; you
   do NOT re-run the whole interview.
@@ -104,6 +117,12 @@ Present ONE table. Every row is detected + editable. This replaces five separate
 - If **existing context files** were found, add one warm line: *"You've already got a `CLAUDE.md` /
   `.claude` here — I won't clobber it. I'll back it up, add my part inside a marked block, and show you
   the diff before anything changes."* (Sets up Q6; mechanism is `merge-strategy.md`.)
+- If a **multi-party coordination** signal was detected (a comms block / agent-room tooling), say so
+  warmly — *"looks like agents already coordinate here, so I'll set up the standalone obligations
+  ledger"* — and let the friend correct the row; if nothing was detected, the Q4 coordination check
+  confirms it. Either way this is a manifest decision (`multi_party`), not one of the twelve scalars, and
+  it selects whether the obligations ledger ships as a standalone `now/obligations.md` (multi-party) or as
+  a compact `## Obligations` section inside `handoff.md` (single-party).
 
 ---
 
@@ -146,6 +165,16 @@ Frame the three concretely (full map in `profiles.md`):
   they ask for reachability tracking or a research workflow, or they say "give me everything." Never
   push Full unprompted — it buries the differentiator under ceremony.
 - State the recommendation + the one-clause why, then let them pick. Their pick wins over your default.
+
+**Coordination check (folded in here — sets the obligations FORM, ADR-0012; does NOT raise the question
+count).** Detection already looked for a comms layer (Q1 signals a + b, surfaced in the Q2 table). If that
+was silent, confirm it as part of sizing the setup — one line, framed as *workload, not tooling*: *"Do
+other agents or repos coordinate with this one — a shared room, a hand-off inbox, an agent-to-agent
+protocol, or cross-repo work you're juggling?"* A **yes — even with no comms tool in the tree** — sets the
+manifest's `multi_party` decision true → a standalone `now/obligations.md`; a **no** carries the lighter
+`## Obligations` handoff section. This is **independent of the profile lean** (a Standard install can be
+multi-party; it does not force Full), and it is recorded as a manifest install-decision, not one of the
+twelve scalars. Detect-then-confirm: the friend's answer overrules a silent or ambiguous read.
 
 ---
 

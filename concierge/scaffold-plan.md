@@ -45,9 +45,13 @@ settings.json are the always-merge-if-present cases.
 0.2 Compute the full operation list (Phases 1–7 below) WITHOUT writing — this is the Q6 dry-run.
 0.3 On the Q6 yes: create/open `<target>/.agent-docs/.kit-manifest.json` and write the header
     (`kit-version` from `<kit>/kit-version.txt`, `kit_ref` — the kit tree's IMMUTABLE commit SHA or
-    version tag, never a branch name — `profile`, `stack`, `created` timestamp, `tokens`
-    resolved). If a manifest already exists, this is a repair/upgrade run — reconcile against it
-    (`merge-strategy.md` §idempotency) instead of starting fresh.
+    version tag, never a branch name — `multi_party` (the obligations-form install decision from the
+    interview's detect-then-confirm coordination check: `true` → a standalone `now/obligations.md`,
+    `false` → the `## Obligations` handoff section; ADR-0012 — a manifest decision recorded **beside**
+    `kit_ref`, NOT one of the twelve scalars, so it is exempt from the `{{…}}` fill pass), `profile`,
+    `stack`, `created` timestamp, `tokens` resolved). If a manifest already exists, this is a
+    repair/upgrade run — reconcile against it (`merge-strategy.md` §idempotency) instead of starting
+    fresh.
     *(The manifest lives inside `.agent-docs/`, so Phase 1 must create that dir first; in practice
     write a bare `.agent-docs/` + the manifest header at 0.3, then populate in Phase 1.)*
 
@@ -68,6 +72,14 @@ Copy the profile's `.agent-docs/` payload (additively — `profiles.md` §1–3 
       rows for dirs this profile does NOT install (`index.md` says to, to "keep the catalog honest"):
       Minimal keeps `now/ decisions/ lessons/`; Standard also keeps `reference/ checkpoints/ memories/`;
       Full keeps everything. Prune before writing.
+1.1b **Obligations ledger — SECTION form** (the manifest `multi_party: false` case, and ALL Minimal
+    installs; ADR-0012). When `multi_party` is `false` — and always at Minimal, where the standalone
+    template is not in the payload — the inter-party obligations ledger rides as a compact `## Obligations`
+    section inside `now/handoff.md` (the `/handoff` §8.5 form: both directions, `obligations.template.md`
+    schema, lighter presentation). Ensure the seeded `now/handoff.md` carries a starter `## Obligations`
+    section — a no-op if the handoff template already ships the stub, else append the empty section so the
+    first `/orient` has a surface to read. No standalone file and no `now/index.md` obligations row in this
+    case.
 1.2 **Standard payload** (`base/standard/agent-docs/`, if profile ≥ standard): COPY-VERBATIM
     `checkpoints/index.md`, `memories/index.md`, `reference/index.md`, and `reviews/index.md` (all ship
     as seed stubs — the root catalog routes to `reference/` and `reviews/` at Standard, so their indexes
@@ -77,6 +89,16 @@ Copy the profile's `.agent-docs/` payload (additively — `profiles.md` §1–3 
       Minimal `templates/` dir, so its catalog row must be added to `templates/index.md` in the same
       change (rule 13 index-completeness). *No Standard `templates/index.md` fragment ships yet to carry
       that row — see the openIssue; until it does, the concierge appends the row by hand.*
+1.2b **Obligations ledger — FILE form** (the manifest `multi_party: true` case; Standard+ only, since the
+    template is Standard payload; ADR-0012). When `multi_party` is `true`, FILL+RENAME
+    `base/standard/agent-docs/now/obligations.template.md` → `now/obligations.md` (fill `{{PROJECT_NAME}}`
+    — the ONLY scalar it carries; drop `.template`; delete the template's `<!-- example … -->` rows per its
+    first-use note). Add its routing row to `now/index.md` in the SAME change (ADR-0005 same-change rule;
+    `now/` is rule-13-exempt, so the row is lint-safe whether or not the file is present). Do NOT also seed
+    the handoff `## Obligations` section (1.1b) — the file IS the ledger now; the two forms are
+    schema-equivalent and never both live at once. At Full the recommendation LEANS toward this file form,
+    but the manifest's detected/confirmed `multi_party` governs (never "auto") — including the DOWN
+    empty-ceremony flip that keeps it a section.
 1.3 **Full payload** (`base/full/agent-docs/`, if profile == full): FILL `CONVENTIONS-full-addendum.md`;
     FILL `reference/work-discipline.md` (gate cmds + `{{CODE_INTEL_TOOL}}`) into the already-installed
     Standard `reference/` dir — the gated-delivery standard-of-record (add its row to `reference/index.md`
@@ -269,8 +291,8 @@ a subdirectory CLAUDE.md loads lazily — only the project-root file is reliably
 ## Ordered operation summary (the deterministic spine)
 
 ```
-0  preconditions + manifest header
-1  .agent-docs/  (minimal → [standard] → [full], additive; root index.md row-prune; reference/ + reviews/ seeds)
+0  preconditions + manifest header (+ multi_party obligations-form decision)
+1  .agent-docs/  (minimal → [standard] → [full], additive; root index.md row-prune; reference/ + reviews/ seeds; obligations ledger file|section per manifest multi_party)
 2  .claude/ rules + skills(bare-name) + non-assembled hooks (+ chmod)
 3  assemble pretooluse-safety-gates.sh  (base + stack fragment + Q5 rules; bash -n)   [Standard+]
 4  .claude/settings.json  (fill → prune hooks to profile → union stack allowlist → validate JSON)

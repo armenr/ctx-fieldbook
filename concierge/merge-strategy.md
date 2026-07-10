@@ -78,6 +78,15 @@ aren't the kit's own `kit:start`/`kit:end`). Those blocks are somebody else's ma
   deliberately-unfilled fork slot for the adopter's own idiom (e.g. work-discipline's "Your gate
   idiom" section) — the adopter re-voices inside the slot, and upgrades preserve the filled slot the
   way installs preserve foreign blocks.
+- **Read-to-classify (obligations-form detection, ADR-0012 — an EXTENSION, not a loosening).** The
+  installer MAY *read* a foreign block's body to classify the repo's coordination posture: a foreign
+  block whose body reads as an **agent-comms protocol** (a message room, monitor/watch-arming lines,
+  named agents + their reply discipline) is the strongest signal for the obligations-ledger form
+  decision (`multi_party` — `interview.md` Q1 detection; `scaffold-plan.md` then ships
+  `now/obligations.md` as a standalone file vs a `## Obligations` handoff section). This is READ-ONLY
+  classification and changes none of the preservation rules above — never merge into, reflow, or edit
+  inside a foreign block; it still never enters the manifest and uninstall never touches it. Classifying
+  is looking, not editing.
 
 ---
 

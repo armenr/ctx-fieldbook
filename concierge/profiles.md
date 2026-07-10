@@ -89,6 +89,7 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 | `reference/index.md` | `reference/index.md` | seed stub; root `index.md` routes to `reference/` at Standard |
 | `reviews/index.md` | `reviews/index.md` | verbatim — the typed `REV-NNN` review-report ledger seed (0.2.0); root `index.md` routes to `reviews/` at Standard |
 | `templates/review-template.md` | `templates/review-template.md` | verbatim — one `REV-NNN` report per review pass; **its `templates/index.md` catalog row must ship** (see scaffold-plan §1.2 note) |
+| `now/obligations.template.md` | `now/obligations.md` | **conditional on the manifest `multi_party` install-decision** (ADR-0012, C1/C5): instantiate ONLY when `multi_party` is true — fill `{{PROJECT_NAME}}`, drop `.template`, add the `now/index.md` routing row same-change. When `multi_party` is false, SKIP this file — the same content seeds as an `## Obligations` section inside `now/handoff.md` (the `/handoff` skill delta), not as a standalone file. `multi_party` is a manifest decision flag, **not** a `{{…}}` token — `parameters.md`'s twelve stay twelve. |
 
 ### `.claude/` (from `base/standard/claude/`)
 | Kit source | Installs to | Note |

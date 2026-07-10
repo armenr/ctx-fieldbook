@@ -10,8 +10,9 @@ related: [lint-docs]
 
 This is the **enforcement** that the `.agent-docs/CONVENTIONS.md` *"Lint rules"* section refers to.
 CONVENTIONS ships those rules as a spec and is honest that only *index completeness* was ever
-hook-enforced; the rest were advisory. `lint-docs.py` makes **all fifteen** real: each is a discrete
-check with a `PASS` / `FAIL` (or `WARN`) verdict and a `file:line` message.
+hook-enforced; the rest were advisory. `lint-docs.py` makes **all fifteen** real — each a discrete
+check with a `PASS` / `FAIL` (or `WARN`) verdict and a `file:line` message — and adds two **kit-local**
+checks (16, 17) the spec does not enumerate.
 
 Language-agnostic and dependency-free by design: **stock Python 3, standard library only** (no
 `pip install`, no `import yaml` — front-matter is hand-parsed). It runs the same on Linux, macOS/BSD,
@@ -35,9 +36,10 @@ lint-docs.py [--root DIR] [--now YYYY-MM-DD] [--warn-days N] [--fail-days N] [--
 **Exit status:** `0` when clean (or warnings only) · `1` when any `FAIL` was reported · `2` on a usage
 error (bad `--root`, bad `--now`). **Warnings never change the exit code.** Output is grouped by rule.
 
-## The fifteen checks (rule → CONVENTIONS mapping)
+## The checks (rule → CONVENTIONS mapping)
 
-Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* section.
+Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* section; **16–17 are kit-local**
+(marked as such in the last column).
 
 | # | Check | Class | CONVENTIONS ref |
 |---|---|---|---|
@@ -49,7 +51,7 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
 | 6 | `status: pending` ⇒ `pending-on`; `deferred` ⇒ `deferred-because` | FAIL | Lint rule 6 · §2 |
 | 7 | ADRs contain a non-empty `## Alternatives Considered` | FAIL | Lint rule 7 · §5 |
 | 8 | `related` / `supersedes` / `superseded-by` / `archived-from` references resolve | FAIL | Lint rule 8 · §2 |
-| 9 | File path matches category — active ADR placement (`decisions/`); a checkpoint is *classified by* `checkpoints/` + shape | FAIL | Lint rule 9 · §1/§3 |
+| 9 | File path matches category — active ADR placement (`decisions/`); a checkpoint **and** a calendar-dated artifact are *classified by directory*, not by shape alone | FAIL | Lint rule 9 · §1/§3 |
 | 10 | Accepted ADRs are not `llm-draft` / `llm-autonomous` | FAIL | Lint rule 10 · §2 |
 | 11 | Date-prefixed filenames match the date format | FAIL | Lint rule 11 · §3 |
 | 12 | `now/` files `last-modified` within the freshness window | **WARN** | Lint rule 12 · §1/§2 |
@@ -57,6 +59,7 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
 | 14 | Checkpoint integrity — all ten numbered points present | FAIL | Lint rule 14 · §6 |
 | 15 | `work-unit:` resolves to a WU in `now/work-plan.md` | FAIL | Lint rule 15 · §4 |
 | 16 | Advisory: ADR filenames carrying a redundant `ADR-` prefix (canonical is `NNNN-slug.md`) | **WARN** | kit-local advisory (not a CONVENTIONS rule) |
+| 17 | **Obligations receivable integrity** — every `## Owed to me` data row in `now/obligations.md` names a trigger **and** a canonical default-if-silent | FAIL | kit-local (obligations ledger; silent when the file is absent) |
 
 ### Notes on specific rules
 
@@ -79,11 +82,14 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
   **or** `decisions/ADR-NNNN-*.md` (the filename prefix is optional — see rule 16); the canonical typed
   ledger ids (`OQ-`, `WU-`, `LP-`, `REV-`, `RV-`, `FR-`, `R-`, `INC-`) are treated as resolvable non-file
   references; a **bare stem** resolves to `<doc_dir>/<stem>.md` or `<root>/<stem>.md`; and **last**, a bare
-  slug that matched none of the above is scanned for across the managed content dirs (the same set rule 13
-  indexes) as `<slug>.md` — a single unambiguous hit resolves, while **two or more** hits keep the FAIL and
-  report *"ambiguous across N content dirs (…) — qualify it with a path"* so the author disambiguates by
-  adding the directory. The content-dir scan is deliberately **last** so typed ids and path-qualified refs
-  keep their exact prior semantics. **`REV-`** (reviews subsystem — `REV-NNN`, Standard tier) is distinct
+  slug that matched none of the above is scanned for across the managed content dirs — the rule-13 set
+  **plus `now/`** (the live-state dir rule 13 does not index but a `related:` legitimately points into) — as
+  `<slug>.md`. A single unambiguous hit resolves, while **two or more** hits keep the FAIL and report
+  *"ambiguous across N content dirs (…) — qualify it with a path"* so the author disambiguates by adding the
+  directory. Including `now/` here is safe *because* of that ambiguity-FAIL: a slug that also lives in
+  another content dir goes ambiguous rather than silently mis-resolving, so scanning the live-state dir can
+  never pick the wrong target. `templates/` and dot-dirs stay excluded. The content-dir scan is deliberately
+  **last** so typed ids and path-qualified refs keep their exact prior semantics. **`REV-`** (reviews subsystem — `REV-NNN`, Standard tier) is distinct
   from **`RV-`** (REVISIT anchors); the alternation is ordered longest-first so `REV-` is never swallowed by
   `RV-`/`R-`. To also recognize **local** spines the kit deliberately does not canonize (e.g. a slice/unit
   `S-`/`U-` spine), pass `--extra-id-prefixes S,U,…` — those prefixes then get the same resolvable-ledger-id
@@ -97,10 +103,29 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
   placement only** — an `NNNN-slug.md` ADR must live in `decisions/` — and the timestamp shape is excluded
   there so a checkpoint is never misread as a misplaced ADR by the leading digits it happens to share.
   Checkpoint *placement* is no longer a shape-triggered check, because the shape alone cannot distinguish a
-  stray checkpoint from a same-named audit artifact; the directory is the only reliable signal.
+  stray checkpoint from a same-named audit artifact; the directory is the only reliable signal. **The same
+  logic covers a plain calendar-dated name** (`YYYY-MM-DD-<slug>.md`, no `HHMMSS` — an incident / audit /
+  dogfood record): its leading four digits satisfy the ADR filename shape, but the directory decides, so a
+  dated file **outside** `decisions/` is excluded from ADR placement and never flagged as a misplaced ADR.
+  A genuine `NNNN-slug` ADR is unaffected — its second segment is a title word, not a two-digit month, so it
+  does not match the date shape.
 - **Rule 16 (ADR-prefix advisory) ships WARN-only.** An adopter whose ADR files are named
   `ADR-NNNN-slug.md` is fully recognized — the ADR rules run and references resolve either way — but
   one advisory per run names the canonical unprefixed form, so drift converges without a forced rename.
+- **Rule 17 (obligations receivable integrity) keys on a runtime file.** It fires only when
+  `now/obligations.md` exists — the standalone **multi-party** obligations ledger. A single-party / Minimal
+  install ships no such file (the same rows live as an `## Obligations` section inside `now/handoff.md`
+  instead), so the rule **passes silently** when the file is absent. When present, it parses the
+  `## Owed to me` table and requires, on every **data** row, both a non-empty **Trigger / by-when** cell
+  (without it a receivable can never come due) and a **Default-if-silent** cell beginning with one of the
+  canonical dispositions — **`chase-once`**, **`apply-default`**, **`never-chase-never-peek`** (a row may
+  append a clause after the token). Each violation is a `FAIL` naming the row's *Counterparty / What*. Rows
+  the template ships between the `<!-- example:start -->` / `<!-- example:end -->` markers are illustrative
+  (delete-on-first-use) and are **skipped**; the header and separator rows are skipped too. Columns are
+  found by **header name** (a cell containing "trigger" / "default"), not by position, so the exact schema
+  wording is tolerated. A table the parser cannot make sense of degrades to **one `WARN`** naming the file —
+  never a traceback (the portability contract: a malformed doc is a finding, not a crash). The `## Owed by
+  me` (debt) table has no silence rule and is not checked by this rule.
 - **Adopt-exemption (retro-adopted corpus).** Docs recorded `action: adopt` in
   `.agent-docs/.kit-manifest.json` predate the kit and carry no kit front-matter, so the schema-class
   rules (1, 2, 3, 4, 5, 6, 10, 12) **plus rule 14 (checkpoint integrity)** are skipped for those paths;
@@ -157,18 +182,28 @@ Wire into a `SessionStart` hook to surface `now/` staleness as a non-blocking nu
 session — pass today's date so the deterministic check has a reference point. A `SessionStart` hook speaks
 the JSON hook protocol (`{"additionalContext": …}`), so the linter's **stdout must be folded into a JSON
 string, not emitted raw** — raw multi-line output (with colons, quotes, and newlines) is not valid JSON and
-would corrupt the hook message. `jq -Rs` reads all of stdin as one raw string and escapes it safely:
+would corrupt the hook message. `jq -Rs` reads all of stdin as one raw string and escapes it safely.
+**Capture the output first** so a linter that cannot speak still yields a real advisory instead of a
+silently blank one:
 
 ```sh
 if command -v python3 >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
-  python3 .claude/hooks/lint-docs.py --root .agent-docs --now "$(date +%Y-%m-%d)" \
-    | jq -Rs '{additionalContext: .}' || true
+  out=$(python3 .claude/hooks/lint-docs.py --root .agent-docs --now "$(date +%Y-%m-%d)" 2>/dev/null)
+  [ -n "$out" ] || out="doc-linter errored — run .claude/hooks/lint-docs.py by hand"
+  printf '%s' "$out" | jq -Rs '{additionalContext: .}'
 fi
 ```
 
-Staleness is WARN-only and the trailing `|| true` swallows the linter's non-zero exit, so this never blocks
-a session — it just surfaces what has drifted as session context. A missing `python3` **or** `jq` makes the
-guard false, so the hook emits nothing and degrades to a no-op (the kit's portability contract).
+Staleness is WARN-only and a `FAIL`-carrying report still exits non-zero, but that exit is **contained
+inside the `$(…)` capture**, so it never propagates and the hook never blocks a session — it just surfaces
+what has drifted as session context. The capture is also what **hardens against a linter that cannot
+speak**: the previous `… | jq … || true` form swallowed a crash or a `--root` / `--now` usage error into an
+*empty* pipe, and `jq -Rs` on empty stdin emits `{"additionalContext":""}` — a silently blank nudge that
+looks like "all clear". Here, if the run produces no stdout (a crash, or usage exit `2` — stderr is sent to
+`/dev/null` so it can't masquerade as a report), the `[ -n "$out" ]` test substitutes the fallback line
+`doc-linter errored — run .claude/hooks/lint-docs.py by hand`, and `jq -Rs` always escapes a **non-empty**
+string, so the message stays JSON-safe. A missing `python3` **or** `jq` makes the guard false, so the hook
+emits nothing and degrades to a no-op (the kit's portability contract).
 
 ## Self-test
 

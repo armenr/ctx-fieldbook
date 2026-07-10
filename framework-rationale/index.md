@@ -95,3 +95,24 @@ decisions you made.
   CLAUDE.md block.
   *Carry-away:* match on the `kit:start` prefix across versions, never an exact
   one-version string; foreign marker blocks are preserved byte-verbatim.
+
+- **`0012-obligations-ledger.md`** *(Standard profile)* — a two-direction
+  inter-party ledger tracks what an agent OWES and is OWED, each receivable
+  carrying a pre-decided **default-if-silent** at a named trigger.
+  *Open when:* an agent is blocked waiting on a counterparty (another agent,
+  another repo, the operator) and that wait — and the silence rule — must survive
+  compaction.
+  *Carry-away:* the novel *owed-to-me* direction has no other home; a receivable
+  is safe across context loss only if the rule for "they never answered" is
+  decided in advance, at a trigger, and written down. The form (standalone file
+  vs `now/handoff.md` section) is a DETECTED install fact (`multi_party`), not a
+  self-report.
+
+- **`0013-origin-posture.md`** — the repo that AUTHORS the kit runs it from a
+  gitignored operator directory, not an installed payload; that self-install
+  doubles as release-verification.
+  *Open when:* reasoning about how the origin repo dogfoods the kit without
+  polluting the payload it ships.
+  *Carry-away:* dogfood the DISCIPLINE (skills, ledger, cold-start) without the
+  PAYLOAD (a second `.agent-docs/`, a marker block) — for adopters this ADR is
+  informational, there is nothing to install.

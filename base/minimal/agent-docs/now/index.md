@@ -1,7 +1,7 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-10
 tags: [meta, index, routing, now]
 related: [status, work-plan, open-questions, handoff]
 ---
@@ -25,6 +25,13 @@ through here; don't browse. Schema authority: `CONVENTIONS.md`.
 - ⭐ `open-questions.md` — **Open when:** something is undecided or blocking; before assuming a
   default. **Carry-away:** `OQ-NNN` is the single source (inline-RESOLVED threading); a resolved OQ
   cites the ADR/WU that closed it.
+
+- ⭐ `obligations.md` *(present on multi-party installs; single-party carries the same content as an
+  `## Obligations` section inside `handoff.md`)* — **Open when:** session start, and before assuming a
+  counterparty (another agent, another repo, the operator) will deliver or acting on a silent wait.
+  **Carry-away:** inter-party debts both directions + the pre-decided **default-if-silent** at each
+  receivable's trigger; a row POINTS at an `OQ-`/`WU-`/`REV-`/DEFER id, never duplicates it. Schema:
+  ADR-0012.
 
 ## Generated at checkpoints (present after the first `/handoff`)
 

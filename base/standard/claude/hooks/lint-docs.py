@@ -3,9 +3,12 @@
 #
 # This is the ENFORCEMENT the CONVENTIONS.md "Lint rules" section refers to. CONVENTIONS ships those
 # rules as a spec; this file makes them real. It implements every rule 1–15 from that section as a
-# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rule 16 is a kit-local
-# advisory (WARN-only, not a CONVENTIONS rule): it nudges `ADR-`-prefixed ADR filenames back toward the
-# canonical unprefixed form without failing the run.
+# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rules 16–17 are kit-local
+# (not CONVENTIONS rules): rule 16 (WARN-only) nudges `ADR-`-prefixed ADR filenames back toward the
+# canonical unprefixed form without failing the run; rule 17 checks receivable-obligation integrity on a
+# multi-party install's now/obligations.md — every "owed to me" row must name its trigger and its
+# default-if-silent — and passes silently when that file is absent (a single-party install carries the
+# same ledger as a handoff section, not a standalone file).
 #
 # Portability contract (the colleague may be on macOS / BSD / WSL):
 #   * STOCK Python 3, STDLIB ONLY — no pip installs, no `import yaml`. Front-matter is hand-parsed.
@@ -80,6 +83,8 @@ RULES = {
     15: "work-unit value resolves to a WU in now/work-plan.md",
     16: "advisory: ADR filenames carry a redundant 'ADR-' prefix; canonical is decisions/NNNN-slug.md "
         "(warn-not-fail)",
+    17: "obligations receivable integrity — every '## Owed to me' row in now/obligations.md names a "
+        "trigger + a canonical default-if-silent",
 }
 
 FAIL = "FAIL"
@@ -240,6 +245,11 @@ ADR_NAME_RE = re.compile(r"^(?:ADR-)?\d{4}-[a-z0-9].*\.md$")
 # Just the prefixed variant, used by the rule-16 convergence advisory.
 ADR_PREFIXED_NAME_RE = re.compile(r"^ADR-\d{4}-[a-z0-9].*\.md$")
 DATE_PREFIX_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
+# A CALENDAR-dated artifact name (YYYY-MM-DD-<slug>.md — an incident / audit / dogfood record). Its leading
+# four digits satisfy ADR_NAME_RE, so rule 9 needs this to tell a dated artifact APART from an ADR: the
+# directory decides, not the shape (see the rule-9 guard). The trailing `-` pins the full year-month-day
+# shape so a genuine `NNNN-slug` ADR (whose second group is a title word, not a month) never matches.
+DATED_ARTIFACT_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-")
 
 
 def rel(path, root):
@@ -330,13 +340,17 @@ def scan_content_dirs_for_slug(slug, root):
 
     Last-resort rule-8 resolution for a BARE slug (no '/', no '.md', no typed-ID prefix) that names a doc
     living in some content dir other than the referring doc's own dir (or root). One hit resolves; more
-    than one is reported as ambiguous by the caller. `managed_dirs` is the same content-dir set rule 13
-    indexes (excludes now/, templates/, dot-dirs), so the scan never reaches VCS internals or kit
-    scaffolding. (`managed_dirs` is defined further down; Python resolves it at call time.)
+    than one is reported as ambiguous by the caller. The scan runs over `managed_dirs(root,
+    include_now=True)`: the rule-13 content-dir set PLUS `now/` — the live-state dir rule 13 does not index
+    but a `related:` legitimately points into. Including it here is safe precisely because a bare slug that
+    also exists elsewhere yields >1 hit and the caller turns that into the ambiguity-FAIL ("qualify it with
+    a path"), so now/ can never silently mis-resolve a ref. templates/ and dot-dirs stay excluded, so the
+    scan never reaches kit scaffolding or VCS internals. (`managed_dirs` is defined further down; Python
+    resolves it at call time.)
     """
     target = slug + ".md"
     hits = []
-    for d in managed_dirs(root):
+    for d in managed_dirs(root, include_now=True):
         if os.path.isfile(os.path.join(d, target)):
             hits.append(rel(d, root))
     return sorted(hits)
@@ -462,8 +476,13 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
     # to share the timestamped filename shape) is NOT a checkpoint, so it gets no "misplaced checkpoint"
     # finding — the shape is genuinely ambiguous and cannot distinguish a stray checkpoint from a same-named
     # audit record. The `not CHECKPOINT_NAME_RE.match(name)` guard also stops such a file being misread as
-    # an ADR by the NNNN- prefix it incidentally shares. Only ADR placement is actively checked here.
+    # an ADR by the NNNN- prefix it incidentally shares. The `not DATED_ARTIFACT_RE.match(name)` guard is the
+    # SAME rationale genus one step out: a plain calendar-dated name (YYYY-MM-DD-<slug>.md, no HHMMSS — an
+    # incident / audit / dogfood record) also satisfies ADR_NAME_RE by its leading digits, but the shape is
+    # ambiguous and the directory wins, so a dated file outside decisions/ is never flagged as a misplaced
+    # ADR. Only ADR placement is actively checked here.
     if ADR_NAME_RE.match(name) and not CHECKPOINT_NAME_RE.match(name) \
+            and not DATED_ARTIFACT_RE.match(name) \
             and name != "index.md" and not name.endswith(".template.md"):
         if parent_dir_name(path) != "decisions":
             findings.append(Finding(9, FAIL, rpath, 1,
@@ -566,7 +585,9 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
 # ---------------------------------------------------------------------------------------------------
 # Rule 13 — index completeness (folds in lint-agent-docs-indexes.sh, promoted to FAIL: it is THE
 # hook-enforced rule per CONVENTIONS). Managed dirs are the one-level (and one-nested) content dirs
-# under root, excluding now/ and templates/, that hold >= 1 non-index, non-template .md.
+# under root, excluding now/ and templates/, that hold >= 1 non-index, non-template .md. (Rule 13 calls
+# managed_dirs() with the default include_now=False — now/ is live state, not indexed content; only the
+# rule-8 slug scan passes include_now=True.)
 # ---------------------------------------------------------------------------------------------------
 
 # In-dir references count in two forms (mirrors lint-agent-docs-indexes.sh exactly): a bare
@@ -595,7 +616,7 @@ def content_docs(dirpath):
     return out
 
 
-def managed_dirs(root):
+def managed_dirs(root, include_now=False):
     result = []
     try:
         top = sorted(os.listdir(root))
@@ -608,7 +629,14 @@ def managed_dirs(root):
         d = os.path.join(root, base)
         if not os.path.isdir(d):
             continue
-        if base in ("now", "templates"):
+        # templates/ is kit scaffolding, never referenceable content — always excluded. now/ is the
+        # live-state dir: rule 13 (default, include_now=False) does NOT index it, but the rule-8 bare-slug
+        # scan opts it back in (include_now=True) so a `related:` can resolve into it; the ambiguity-FAIL is
+        # the collision protection that makes scanning the live-state dir safe (a slug shared with another
+        # content dir goes ambiguous, never a silent wrong resolve).
+        if base == "templates":
+            continue
+        if base == "now" and not include_now:
             continue
         if content_docs(d):
             result.append(d)
@@ -681,6 +709,136 @@ def check_adr_prefix_advisory(root, findings):
         "%d ADR file(s) carry the redundant 'ADR-' filename prefix (%s); the canonical authored form is "
         "the unprefixed 'decisions/%s' — rename at leisure (ADR rules and references already work either "
         "way)" % (len(prefixed), shown, canonical)))
+
+
+# ---------------------------------------------------------------------------------------------------
+# Rule 17 — obligations receivable integrity (multi-party form). A multi-party install seeds a standalone
+# now/obligations.md (the inter-party debt ledger); a single-party / Minimal install carries the same rows
+# as an `## Obligations` section inside now/handoff.md and ships NO obligations.md. This rule keys on the
+# runtime FACT — the file's existence — and is SILENT when it is absent: there is no receivable ledger to
+# check. When present, every DATA row of its `## Owed to me` table must name BOTH the point at which silence
+# becomes actionable (a non-empty Trigger/by-when cell) AND the pre-decided rule at that point (a
+# Default-if-silent cell drawn from the canonical enum), so a receivable can never be left with no trigger
+# (it would never come due) or no silence-rule (an agent would have to improvise a default). Example rows
+# the template ships between the `<!-- example:start -->` / `<!-- example:end -->` markers are illustrative,
+# delete-on-first-use, and are skipped — the linter honors the same marker pair the template uses to fence
+# them. Columns are located by HEADER NAME (a cell containing "trigger" / "default"), not by position, so
+# the check tolerates the schema's exact wording ("Trigger / by-when", "Default-if-silent") without pinning
+# to a column index. A table the parser cannot make sense of degrades to ONE WARN naming the file, never a
+# traceback (the portability contract: a malformed doc is a finding, not a crash).
+# ---------------------------------------------------------------------------------------------------
+
+# Canonical default-if-silent dispositions (CONVENTIONS / ADR-0012). A cell must BEGIN with one of these; a
+# row may append a clause after the token (e.g. "chase-once, then apply-default: proceed against v1").
+OBLIGATION_DEFAULTS = ("chase-once", "apply-default", "never-chase-never-peek")
+# Prefix-only matching (same canon as the kit's own CLAUDE.md markers, ADR-0011): the template
+# decorates its start markers with inline guidance ("<!-- example:start · delete these rows... -->"),
+# so an exact-literal match would silently never skip — the vacuity class this file exists to kill.
+OBLIGATION_EXAMPLE_START = "<!-- example:start"
+OBLIGATION_EXAMPLE_END = "<!-- example:end"
+MD_SEPARATOR_CELL_RE = re.compile(r"^:?-+:?$")
+
+
+def split_md_row(line):
+    """Split a markdown table row into stripped cell strings, or None if the line is not a table row. A
+    leading '|' is required; a trailing '|' is optional so both border styles ('| a | b |' and '| a | b')
+    parse the same."""
+    s = line.strip()
+    if not s.startswith("|"):
+        return None
+    s = s[1:]
+    if s.endswith("|"):
+        s = s[:-1]
+    return [c.strip() for c in s.split("|")]
+
+
+def is_md_separator(cells):
+    """True for a header/body separator row — every cell is dashes with an optional alignment colon."""
+    return bool(cells) and all(MD_SEPARATOR_CELL_RE.match(c) for c in cells)
+
+
+def lint_owed_to_me(text, rpath, findings):
+    """Parse the `## Owed to me` table and check each real data row. Appends findings in place; may WARN
+    once when the section/table is not shaped as expected (the caller wraps this so nothing raises)."""
+    lines = text.split("\n")
+    head_re = re.compile(r"^#{2,6}\s+Owed to me\b", re.IGNORECASE)
+    hidx = -1
+    for i, ln in enumerate(lines):
+        if head_re.match(ln.strip()):
+            hidx = i
+            break
+    if hidx == -1:
+        findings.append(Finding(17, WARN, rpath, 1,
+                                "obligations.md has no '## Owed to me' section to check"))
+        return
+
+    header = None
+    trig_idx = def_idx = None
+    in_example = False
+    for j in range(hidx + 1, len(lines)):
+        s = lines[j].strip()
+        if re.match(r"^#{1,6}\s", s):
+            break  # reached the next section (e.g. '## Owed by me') — the receivable table is done
+        if OBLIGATION_EXAMPLE_START in s:
+            in_example = True
+            continue
+        if OBLIGATION_EXAMPLE_END in s:
+            in_example = False
+            continue
+        cells = split_md_row(lines[j])
+        if cells is None or is_md_separator(cells):
+            continue
+        if header is None:
+            header = cells
+            for k, h in enumerate(header):
+                hl = h.lower()
+                if trig_idx is None and "trigger" in hl:
+                    trig_idx = k
+                if def_idx is None and "default" in hl:
+                    def_idx = k
+            if trig_idx is None or def_idx is None:
+                findings.append(Finding(17, WARN, rpath, hidx + 1,
+                                        "'## Owed to me' header lacks a Trigger and/or Default-if-silent "
+                                        "column — cannot check rows"))
+                return
+            continue
+        if in_example:
+            continue  # shipped illustrative row (delete-on-first-use), not a real receivable
+        who = cells[0] if len(cells) > 0 else ""
+        what = cells[1] if len(cells) > 1 else ""
+        label = "%s / %s" % (who or "?", what or "?")
+        trig = cells[trig_idx] if trig_idx < len(cells) else ""
+        if not trig:
+            findings.append(Finding(17, FAIL, rpath, j + 1,
+                                    "owed-to-me row [%s] has an empty Trigger/by-when — a receivable with "
+                                    "no trigger can never come due" % label))
+        dflt = cells[def_idx] if def_idx < len(cells) else ""
+        if not any(dflt.startswith(tok) for tok in OBLIGATION_DEFAULTS):
+            findings.append(Finding(17, FAIL, rpath, j + 1,
+                                    "owed-to-me row [%s] Default-if-silent '%s' must begin with one of %s"
+                                    % (label, dflt, list(OBLIGATION_DEFAULTS))))
+
+
+def check_obligations_receivable(root, findings):
+    path = os.path.join(root, "now", "obligations.md")
+    if not os.path.isfile(path):
+        return  # single-party / Minimal installs carry the ledger as a handoff section, not this file
+    rpath = rel(path, root)
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError as exc:
+        findings.append(Finding(17, WARN, rpath, 1, "cannot read obligations.md: %s" % exc))
+        return
+    before = len(findings)
+    try:
+        lint_owed_to_me(text, rpath, findings)
+    except Exception:
+        # Defensive last line: a table shape the parser did not anticipate degrades to ONE WARN, never a
+        # traceback. Drop any partial findings this pass emitted so the file reports exactly one WARN.
+        del findings[before:]
+        findings.append(Finding(17, WARN, rpath, 1,
+                                "could not parse the '## Owed to me' table — verify its structure by hand"))
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -759,7 +917,7 @@ def iter_markdown(root):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Doc-schema linter for .agent-docs/ (CONVENTIONS.md lint rules 1-15).")
+        description="Doc-schema linter for .agent-docs/ (CONVENTIONS.md lint rules 1-15 + kit-local 16-17).")
     ap.add_argument("--root", default=".agent-docs",
                     help="root of the .agent-docs tree to lint (default: .agent-docs)")
     ap.add_argument("--now", default=None,
@@ -805,6 +963,7 @@ def main(argv=None):
                        extra_id_re)
     check_index_completeness(root, findings)
     check_adr_prefix_advisory(root, findings)
+    check_obligations_receivable(root, findings)
 
     # Adopt-exemption: retro-adopted docs (manifest `action: adopt`) predate the kit and carry no kit
     # front-matter, so drop their schema-class findings. Rule 13 (index completeness) is NOT in the

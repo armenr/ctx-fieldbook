@@ -1,10 +1,10 @@
 ---
 name: handoff
-description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality. Accepts optional session notes as arguments. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
+description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality; sweeps the inter-party obligations ledger both directions (owed-by / owed-to, each receivable carrying a trigger + a default-if-silent) — the standalone now/obligations.md when it exists, else a handoff Obligations section. Accepts optional session notes as arguments. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
 argument-hint: [optional session notes to fold into the handoff]
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-10
 tags: [skill, lifecycle, handoff]
 ---
 
@@ -82,6 +82,26 @@ Mark completed items ✅; surface the IMMEDIATE NEXT ACTION at the top; update `
 
 Move resolved questions to "Recently resolved" with a closure reference (commit / `ADR-NNNN` / log entry); add newly-surfaced questions; update `last-modified`.
 
+## 5.5 Sweep the obligations ledger (ADR-0012)
+
+Inter-party debts move on their own clock, faster than this handoff regenerates — sweep them explicitly so none dies at compaction. This step runs BEFORE §8's handoff regeneration (it sits here between §5 and §6), so the ledger is trued up first.
+
+**Where the ledger lives — branch on the runtime fact:** **if `now/obligations.md` exists** (the multi-party form), sweep that file; **otherwise the handoff's `## Obligations` section** (§8.5) IS the ledger — sweep it instead. Same schema, same safety floor either way — `obligations.template.md` is the single authority; do not restate its columns here.
+
+**Snapshot before mutating.** When the file form is present, copy `now/obligations.md` into `.claude/handoffs/` beside the §2 handoff archive — a compaction firing mid-sweep must not leave a trusted half-written table. Write each row ATOMICALLY: never add an owed-to-me row missing its `Trigger/by-when` or `Default-if-silent` cell.
+
+Walk the WHOLE session (not just the tail). **Materiality gate on every new row:** a row needs a NAMED deliverable + an identified counterparty + a trigger. Discard conversational hedges and pleasantries ("I'll take a look", "sure, sometime") — a phantom row is worse than a missed one; when commitment strength is ambiguous, file SOFT, never HARD.
+
+- **New debts** — every concrete "I'll draft / I'll send / next I'll…" deliverable you promised a counterparty → an **Owed-by-me** row: *Counterparty · What · Class (HARD gates THE COUNTERPARTY's work / SOFT) · Due/trigger · Source (where you said it)*.
+- **New receivables** — every promise a counterparty made you, and every point you are now BLOCKED waiting on someone → an **Owed-to-me** row: *Counterparty · What · Class (HARD gates MY work / SOFT) · Trigger/by-when · Default-if-silent · Source*. It MUST carry a parseable **Trigger/by-when** AND a **Default-if-silent** — `chase-once` · `apply-default` · `never-chase-never-peek`; do not file one without both. **Gate safety:** if the row is HARD and its counterparty is the operator, or its deliverable is an authorization (approval / sign-off / release / deploy / merge), `apply-default` is FORBIDDEN — use `chase-once` or `never-chase-never-peek`; an agent must never leave a rule that self-authorizes a gate crossing at cold-start. Its **Source** cites the promise's provenance — a comms-log **message id** (file form) or a **commit / PR / issue link / dated conversation note** (`obligations.template.md`'s Source legend carries both species); this is what `/orient` looks the receivable up by when it checks whether the deliverable landed.
+- **Settlements** — every row whose deliverable arrived (or whose trigger passed) → strike it through IN PLACE with a settlement stamp (date + Source), keep it THIS cycle so the next `/orient` surfaces it; then journal the PRIOR cycle's settled rows into this handoff's `log.md` entry (§6) and PRUNE them from the ledger. Never silently delete a row — the log entry is the preserved audit trail (the explicit carve-out to never-delete-silently).
+- **Tripwires** — any flip-condition you are watching that no counterparty owes → the Tripwires block, POINT-ONLY: cite the `RV-`/`DEFER`/`WU-` id, don't restate its action.
+- **Non-overlap** — a row POINTS at an `OQ-`/`WU-`/`REV-`/DEFER by id; it never duplicates one (ADR-0012; discipline, not lint-checked).
+
+Update `last-modified` on the ledger surface you swept (`now/obligations.md`, or the regenerated `handoff.md`).
+
+**When there is no `now/obligations.md`** (single-party / Minimal, or a Standard install carrying the section form): maintain the SAME content — same schema (single source: `obligations.template.md`), same Trigger + Default-if-silent requirement, same gate-safety rule — as a lighter `## Obligations` bullet section inside the regenerated `handoff.md` (§8.5). Capturing only at this handoff cadence (lower fidelity than the standalone file) is the accepted single / low-party trade.
+
 ## 6. Append entry to `.agent-docs/log.md`
 
 Newest at top: `## [YYYY-MM-DD] handoff | <one-line session summary>` + 2-3 lines. Plus discrete `decision | ...`, `memory | ...`, `ingest | ...` entries as warranted.
@@ -142,6 +162,7 @@ Sections:
 6. `## Detour-chain` — **REQUIRED.** The side-quest map (MAIN objective → each nested side-quest: what spawned it → what it found → resolved/open), so the next agent can climb back to the main thread.
 7. `## Immediate next steps` — concrete, with specific paths, commands, confirmation gates. Load-bearing for resume. For any in-flight / just-completed workflow carried forward (if you ran any), add a **verify-AFTER-the-workflow block**: the result-integrity checks + metric confounds + "trust X not Y" caveats the next agent must apply to its output (not just resume mechanics). Include any reusable **env/build RECIPE** / verification GATE discovered as a **labeled, greppable verbatim block**.
 8. `## Recent decisions made` — table: when, decision, rationale/reference.
+8.5. `## Obligations` — **present ONLY when `now/obligations.md` does NOT exist** (if the standalone file exists it is the ledger, ADR-0012, and this section is omitted). Carry the SAME schema as `obligations.template.md` — the single authority; do NOT restate columns that could drift from it — rendered as a compact bullet list, not the full tables: a **Waiting on (owed to me)** list (each bullet: *counterparty · what (may cite an id) · HARD (gates MY work) / SOFT · @trigger · default-if-silent* — Trigger + default-if-silent mandatory; no `apply-default` on an operator / authorization row) and an **I owe (owed by me)** list (*counterparty · what · HARD (gates THE COUNTERPARTY's work) / SOFT · due/trigger*), plus a one-line Tripwires note (POINT at an id) and a Settled line (journaled to `log.md`, then pruned). Rows point at `OQ-`/`WU-`/`REV-` ids, never duplicate them.
 9. `## Breadcrumbs / artifacts` — scratch dirs / spike harnesses built outside the repo (location + verdict + keep-or-clean); ephemeral / temp-dir outputs + their durable transcript paths + resume commands. Things that live in no git tree.
 10. `## Reading order` — pointer at status/work-plan/open-questions/CLAUDE.md **+ the latest `checkpoints/` sitrep if one post-dates this handoff** (it is the zero-loss forensic record — the handoff curates; the sitrep preserves the dead-ends at full fidelity).
 11. `## Recent commits` — head of branch (last 5). (Dispatch-heavy session? Fold the §6.5a ledger here.)
