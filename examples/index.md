@@ -4,9 +4,9 @@
 provenance: llm-reviewed
 template-version: 1.0.0
 created: 2026-07-03
-last-modified: 2026-07-03
+last-modified: 2026-07-11
 tags: [index, examples]
-related: [sample-adr, sample-checkpoint, sample-lesson, sample-handoff, sample-dispatch-charter]
+related: [sample-adr, sample-checkpoint, sample-lesson, sample-handoff, sample-review, sample-dispatch-charter]
 ---
 
 # examples/ — index
@@ -47,6 +47,16 @@ can see how the doc types cross-reference each other by ID.
   almost happened · what made the save reliable · recurrence count.
   **Carry-away:** the title is the CLAIM ("input-keyed maps must be bounded"), not the topic; the
   three axes are provenance × maturity × severity.
+
+## Recording review findings
+
+- 🔨 `sample-review.md` — a fully-populated adversarial review (REV-001) of the WU-0042 token-bucket
+  limiter: six findings spanning every severity (BLOCKER → NIT) and all four dispositions.
+  **Open when:** you want the shape of a GOOD *filled* review — how a NIT still earns a disposition, how
+  an untestable finding is TRACKED → OQ-014 (with a Deferred-obligations note) instead of dropped, and
+  the range the test-obligation column holds (named RED-on-HEAD tests · `unbound → <owner>` · n/a-by-policy).
+  **Carry-away:** capture ALL feedback — every severity, never just the blockers — and give each finding
+  an EXPLICIT disposition; that discipline is the whole point, the blockers are the easy part.
 
 ## Fanning work out to a sub-agent (Full profile)
 

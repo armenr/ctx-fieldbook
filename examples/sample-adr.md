@@ -65,6 +65,8 @@ handler or the middleware — the seam is the whole point of choosing an interfa
 - **Good:** no new infrastructure; pure-Go and unit-testable with a fake clock; the interface seam
   makes the Redis path (OQ-014) a swap, not a rewrite; per-node isolation means one abuser cannot
   starve a shared store.
+- **Sizing policy (deliberate):** burst == steady-state RPS — one page render legitimately fans out
+  several redirects at once; the bucket admits that fan-out while the refill rate holds the average.
 - **Bad / costs:** the map grows **unbounded** — a new key per unique client IP, never reclaimed —
   which is a latent memory-exhaustion bug under high IP cardinality (surfaced as the near-miss LP-023
   and remediated by the sweeper in FR-0031; this ADR is not "done" until that lands). Limits are
