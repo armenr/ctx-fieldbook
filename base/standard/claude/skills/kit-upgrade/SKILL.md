@@ -227,6 +227,11 @@ applies unchanged).
   block means skip the fence entirely (lifecycle then treats `CLAUDE.md` as never-kit-owned) —
   manifesting only genuinely-adopted rows. When adoption RENAMES a file (`git mv`), stage the content
   edits before committing or the staged snapshot lints stale.
+- **ID-prefix renames keep retired IDs resolvable.** When adoption (or a local reorganization it
+  triggers) renames an ID prefix — not just a file — the renaming ADR carries a crosswalk table
+  (`old-id → new-id`): retired IDs are never silently deleted, and references in write-once artifacts
+  keep resolving through the crosswalk. At reconciliation an ACCEPTED ADR outranks an OPEN question —
+  the `supersedes:` flag above is the per-row consent mechanism for exactly that.
 
 Present the plan as a per-artifact table — one row per path, with a keep-local column and per-row
 secret/machine flags (`secret`: never copy, echo, or diff its contents; `machine`: host-specific

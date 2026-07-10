@@ -74,6 +74,10 @@ aren't the kit's own `kit:start`/`kit:end`). Those blocks are somebody else's ma
   uninstall strips only the kit's own `kit:start`…`kit:end` region.
 - **Insert after.** When appending the kit block (§1 step 3), place it AFTER any existing foreign
   blocks, not between a foreign pair or above one.
+- **The same seam discipline, inverted, is how kit docs host LOCAL content:** a kit doc may ship a
+  deliberately-unfilled fork slot for the adopter's own idiom (e.g. work-discipline's "Your gate
+  idiom" section) — the adopter re-voices inside the slot, and upgrades preserve the filled slot the
+  way installs preserve foreign blocks.
 
 ---
 

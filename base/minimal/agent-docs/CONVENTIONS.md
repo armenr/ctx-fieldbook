@@ -331,11 +331,13 @@ ledger entry) · `supersede` (doc → archive w/ named successor) · `lint`. The
 
 ---
 
-## Lint rules (index completeness = hook-enforced; the rest ADVISORY — not yet implemented)
+## Lint rules (index completeness = hook-enforced at every tier; the rest = ADVISORY at Minimal, ENFORCED at Standard+)
 
-> **Honesty note.** The only rule a shipped hook actually enforces today is **index completeness**
-> (below). The remaining rules are the SPEC for a doc-schema linter that does not exist yet; track its
-> implementation as an OQ. Until it lands, treat them as manual discipline, not a guarantee.
+> **Tier note.** At MINIMAL, the only rule a shipped hook enforces is **index completeness** (rule 13);
+> the rest are manual discipline — the *(ADVISORY)* tags below describe this tier. At **STANDARD+**,
+> `.claude/hooks/lint-docs.py` makes every rule below real: **FAIL** on violation, except rule 12 which
+> WARNs at 7d and FAILs at 90d (the linter also carries a kit-local rule-16 ADR-prefix advisory,
+> WARN-only — see its README for exact semantics and the `--extra-id-prefixes` seam).
 
 1. Front-matter present + YAML-parseable. *(ADVISORY)*
 2. Required fields populated (`provenance`, `created`, `last-modified`). *(ADVISORY)*

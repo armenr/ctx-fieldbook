@@ -105,6 +105,10 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
 - **0/N findings refuted is a smell, not a triumph — check the refuter before celebrating.** A perfectly
   clean adversarial pass is more often a broken or misaimed checker than a perfect artifact: confirm the
   refuter actually ran, against the right tree, and could have failed.
+- **Never answer from absence.** An empty search / lookup / retrieval result is evidence about the
+  QUERY, not the world: scope the query to the question, and when the scoped result comes back empty,
+  WIDEN and retrieve before concluding "does not exist" — "not found" and "absent" are different
+  claims, and only the widened pass earns the second.
 
 ## Cycle start — scope recon outward, reference sweep inward
 

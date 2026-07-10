@@ -2,6 +2,25 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.3.2-dev — 2026-07-10
+
+Post-harvest cherry-pick batch: the smalls nominated by the 0.3.x UPSTREAM sweep, plus a stale-label
+fix its deliberations exposed. Doctrine only — no mechanism, no new surfaces.
+
+- **"Never answer from absence"** doctrine line in `standing-rules-core.md` (§Adversarial separation
+  of duties): an empty scoped retrieval is evidence about the query, not the world — widen and
+  retrieve before concluding absence.
+- **ID-prefix rename crosswalk rule** in kit-upgrade's retro-adoption branch: retired IDs stay
+  resolvable via a crosswalk table in the renaming ADR, never silently deleted; an accepted ADR
+  outranks an open question at reconciliation (pairs with the existing `supersedes:` flag).
+- **Fork-slot cross-ref** in `merge-strategy.md` §Foreign marker blocks: the seam discipline
+  inverted — kit docs may ship deliberately-unfilled local-idiom slots (work-discipline's "Your
+  gate idiom"); the filled slot is preserved the way installs preserve foreign blocks.
+- **CONVENTIONS lint-rules section made tier-true** (header + honesty note claimed the schema linter
+  was "not yet implemented" — text predating `lint-docs.py`): ADVISORY at Minimal, enforced at
+  Standard+ (FAIL except rule 12 WARN-then-FAIL; kit-local rule-16 advisory WARN-only).
+  Adopt-exemption unchanged.
+
 ## 0.3.1-dev — 2026-07-10
 
 Field-hardening pass from the first retro-adoption shakedown (public-fork + source-repo cases) and
