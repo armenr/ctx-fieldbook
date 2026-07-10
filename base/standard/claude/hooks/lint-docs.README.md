@@ -49,7 +49,7 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
 | 6 | `status: pending` ⇒ `pending-on`; `deferred` ⇒ `deferred-because` | FAIL | Lint rule 6 · §2 |
 | 7 | ADRs contain a non-empty `## Alternatives Considered` | FAIL | Lint rule 7 · §5 |
 | 8 | `related` / `supersedes` / `superseded-by` / `archived-from` references resolve | FAIL | Lint rule 8 · §2 |
-| 9 | File path matches category (ADR in `decisions/`, checkpoint in `checkpoints/`) | FAIL | Lint rule 9 · §1/§3 |
+| 9 | File path matches category — active ADR placement (`decisions/`); a checkpoint is *classified by* `checkpoints/` + shape | FAIL | Lint rule 9 · §1/§3 |
 | 10 | Accepted ADRs are not `llm-draft` / `llm-autonomous` | FAIL | Lint rule 10 · §2 |
 | 11 | Date-prefixed filenames match the date format | FAIL | Lint rule 11 · §3 |
 | 12 | `now/` files `last-modified` within the freshness window | **WARN** | Lint rule 12 · §1/§2 |
@@ -72,15 +72,32 @@ Every rule maps 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* sectio
   index*, *unindexed* (on disk, not referenced), and *phantom* (referenced, no such file). Cross-dir
   tokens (containing `/`) are ignored — presence-only, by design. Managed dirs are the one-level (and
   one-nested) content dirs under `--root`, **excluding `now/` and `templates/`**.
-- **Rule 8 resolution.** A bare id resolves to `<dir>/<id>.md` or `<root>/<id>.md`; a path-like token
-  (`../x/y.md`) resolves relative to the doc then to root; `ADR-NNNN` resolves to `decisions/NNNN-*.md`
+- **Rule 8 resolution** (tried in order): a **path-qualified** token (contains `/`, or ends `.md`)
+  resolves relative to the doc dir then the root — and when it is **extensionless** (e.g.
+  `decisions/0001-foo`) the literal path is tried first, then the same path with `.md` appended, so a
+  `related:` written without its extension still resolves; `ADR-NNNN` resolves to `decisions/NNNN-*.md`
   **or** `decisions/ADR-NNNN-*.md` (the filename prefix is optional — see rule 16); the canonical typed
   ledger ids (`OQ-`, `WU-`, `LP-`, `REV-`, `RV-`, `FR-`, `R-`, `INC-`) are treated as resolvable non-file
-  references. **`REV-`** (reviews subsystem — `REV-NNN`, Standard tier) is distinct from **`RV-`** (REVISIT
-  anchors); the alternation is ordered longest-first so `REV-` is never swallowed by `RV-`/`R-`. To also
-  recognize **local** spines the kit deliberately does not canonize (e.g. a slice/unit `S-`/`U-` spine),
-  pass `--extra-id-prefixes S,U,…` — those prefixes then get the same resolvable-ledger-id treatment. It is
-  an extension seam in the caller's wiring, so it stays upgrade-safe (no keep-local fork of the linter).
+  references; a **bare stem** resolves to `<doc_dir>/<stem>.md` or `<root>/<stem>.md`; and **last**, a bare
+  slug that matched none of the above is scanned for across the managed content dirs (the same set rule 13
+  indexes) as `<slug>.md` — a single unambiguous hit resolves, while **two or more** hits keep the FAIL and
+  report *"ambiguous across N content dirs (…) — qualify it with a path"* so the author disambiguates by
+  adding the directory. The content-dir scan is deliberately **last** so typed ids and path-qualified refs
+  keep their exact prior semantics. **`REV-`** (reviews subsystem — `REV-NNN`, Standard tier) is distinct
+  from **`RV-`** (REVISIT anchors); the alternation is ordered longest-first so `REV-` is never swallowed by
+  `RV-`/`R-`. To also recognize **local** spines the kit deliberately does not canonize (e.g. a slice/unit
+  `S-`/`U-` spine), pass `--extra-id-prefixes S,U,…` — those prefixes then get the same resolvable-ledger-id
+  treatment. It is an extension seam in the caller's wiring, so it stays upgrade-safe (no keep-local fork of
+  the linter).
+- **Rules 9 & 14 — a checkpoint is classified by directory + shape, not shape alone.** A file counts as a
+  checkpoint only when it lives directly under `checkpoints/` **and** carries the timestamped
+  `YYYY-MM-DD-HHMMSS-<slug>.md` shape. A date+time-named file **elsewhere** (an `audits/` record, say, that
+  legitimately shares that filename shape) is therefore **not** a checkpoint: it gets no checkpoint-integrity
+  check (rule 14) and no "misplaced checkpoint" finding (rule 9). Rule 9 accordingly performs **ADR
+  placement only** — an `NNNN-slug.md` ADR must live in `decisions/` — and the timestamp shape is excluded
+  there so a checkpoint is never misread as a misplaced ADR by the leading digits it happens to share.
+  Checkpoint *placement* is no longer a shape-triggered check, because the shape alone cannot distinguish a
+  stray checkpoint from a same-named audit artifact; the directory is the only reliable signal.
 - **Rule 16 (ADR-prefix advisory) ships WARN-only.** An adopter whose ADR files are named
   `ADR-NNNN-slug.md` is fully recognized — the ADR rules run and references resolve either way — but
   one advisory per run names the canonical unprefixed form, so drift converges without a forced rename.
@@ -137,15 +154,21 @@ hard-failing the commit (the kit's portability contract).
 ### Optional: SessionStart (advisory freshness nudge)
 
 Wire into a `SessionStart` hook to surface `now/` staleness as a non-blocking nudge at the top of a
-session — pass today's date so the deterministic check has a reference point:
+session — pass today's date so the deterministic check has a reference point. A `SessionStart` hook speaks
+the JSON hook protocol (`{"additionalContext": …}`), so the linter's **stdout must be folded into a JSON
+string, not emitted raw** — raw multi-line output (with colons, quotes, and newlines) is not valid JSON and
+would corrupt the hook message. `jq -Rs` reads all of stdin as one raw string and escapes it safely:
 
 ```sh
-command -v python3 >/dev/null 2>&1 && \
-  python3 .claude/hooks/lint-docs.py --root .agent-docs --now "$(date +%Y-%m-%d)" || true
+if command -v python3 >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+  python3 .claude/hooks/lint-docs.py --root .agent-docs --now "$(date +%Y-%m-%d)" \
+    | jq -Rs '{additionalContext: .}' || true
+fi
 ```
 
-Because staleness is WARN-only and the trailing `|| true` swallows a non-zero exit, this never blocks
-a session — it just prints what has drifted.
+Staleness is WARN-only and the trailing `|| true` swallows the linter's non-zero exit, so this never blocks
+a session — it just surfaces what has drifted as session context. A missing `python3` **or** `jq` makes the
+guard false, so the hook emits nothing and degrades to a no-op (the kit's portability contract).
 
 ## Self-test
 

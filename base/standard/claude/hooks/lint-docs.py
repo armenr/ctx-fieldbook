@@ -272,6 +272,17 @@ def parent_dir_name(path):
     return os.path.basename(os.path.dirname(path))
 
 
+def is_checkpoint(path):
+    """A checkpoint is classified by DIRECTORY + SHAPE: it must live directly under checkpoints/ AND carry
+    the timestamped filename shape (YYYY-MM-DD-HHMMSS-<slug>.md). A date+HHMMSS-named file elsewhere — an
+    audits/ artifact that happens to share the shape, say — is NOT a checkpoint and gets no checkpoint-class
+    rules (14). index.md and templates are never checkpoints."""
+    name = os.path.basename(path)
+    if name == "index.md" or name.endswith(".template.md"):
+        return False
+    return parent_dir_name(path) == "checkpoints" and bool(CHECKPOINT_NAME_RE.match(name))
+
+
 def as_list(v):
     if v is None:
         return []
@@ -314,8 +325,30 @@ def parse_date(s):
         return None
 
 
+def scan_content_dirs_for_slug(slug, root):
+    """Root-relative dirs (sorted) that contain `<slug>.md`, scanning the managed content dirs only.
+
+    Last-resort rule-8 resolution for a BARE slug (no '/', no '.md', no typed-ID prefix) that names a doc
+    living in some content dir other than the referring doc's own dir (or root). One hit resolves; more
+    than one is reported as ambiguous by the caller. `managed_dirs` is the same content-dir set rule 13
+    indexes (excludes now/, templates/, dot-dirs), so the scan never reaches VCS internals or kit
+    scaffolding. (`managed_dirs` is defined further down; Python resolves it at call time.)
+    """
+    target = slug + ".md"
+    hits = []
+    for d in managed_dirs(root):
+        if os.path.isfile(os.path.join(d, target)):
+            hits.append(rel(d, root))
+    return sorted(hits)
+
+
 def resolve_reference(ref, doc_path, root, extra_id_re=None):
-    """True if a reference token resolves to an existing file (or is a non-file typed ID).
+    """Resolve a reference token. Returns (resolved, detail).
+
+    `resolved` is True when the token resolves to an existing file (or is a non-file typed ID). `detail`
+    is None for the ordinary unresolved case (the caller supplies its generic "does not resolve" message)
+    and a short clause (e.g. "ambiguous across N content dirs (...)") when the failure needs a specific
+    message.
 
     `extra_id_re`, when supplied, is a compiled regex of caller-declared LOCAL typed-ID prefixes
     (--extra-id-prefixes); a token matching it is treated as a resolvable non-file ledger id, exactly like
@@ -323,41 +356,56 @@ def resolve_reference(ref, doc_path, root, extra_id_re=None):
     canonize — a flag in the caller's wiring, not an edit to (or fork of) this linter.
     """
     if not isinstance(ref, str):
-        return True
+        return True, None
     ref = ref.strip()
     if ref == "" or ref.lower() in ("null", "~", "none", "[]"):
-        return True
+        return True, None
     doc_dir = os.path.dirname(doc_path)
-    # Path-like reference.
+    # Path-qualified reference (contains '/', or already carries a .md extension). Try the literal path
+    # first, then — for a path-qualified but EXTENSIONLESS ref (e.g. `decisions/0001-foo`) — the same path
+    # with `.md` appended; each relative to the doc dir, then the root. This mirrors the bare-stem fallback
+    # below so a related-ref written without its extension still resolves.
     if "/" in ref or ref.endswith(".md"):
-        cand = os.path.normpath(os.path.join(doc_dir, ref))
-        if os.path.isfile(cand):
-            return True
-        cand2 = os.path.normpath(os.path.join(root, ref))
-        return os.path.isfile(cand2)
+        cands = [ref] if ref.endswith(".md") else [ref, ref + ".md"]
+        for base in (doc_dir, root):
+            for c in cands:
+                if os.path.isfile(os.path.normpath(os.path.join(base, c))):
+                    return True, None
+        return False, None
     # ADR-NNNN -> decisions/NNNN-*.md OR decisions/ADR-NNNN-*.md (adopters who keep the prefix on disk).
     m = re.match(r"^ADR-(\d{3,4})$", ref, re.IGNORECASE)
     if m:
         dec = os.path.join(root, "decisions")
         if not os.path.isdir(dec):
-            return False
+            return False, None
         prefix = m.group(1)
-        return any(
+        ok = any(
             (fn.startswith(prefix + "-") or fn.startswith("ADR-" + prefix + "-"))
             and fn.endswith(".md")
             for fn in os.listdir(dec)
         )
+        return ok, None
     # Other typed IDs (OQ/WU/LP/…) are ledger rows, not files — treat as resolvable. Caller-declared local
     # spines (--extra-id-prefixes) get the same treatment via extra_id_re.
     if ID_PREFIX_RE.match(ref):
-        return True
+        return True, None
     if extra_id_re is not None and extra_id_re.match(ref):
-        return True
+        return True, None
     # Bare stem -> <doc_dir>/<ref>.md or <root>/<ref>.md
     for base in (doc_dir, root):
         if os.path.isfile(os.path.join(base, ref + ".md")):
-            return True
-    return False
+            return True, None
+    # LAST resort — a bare slug that did not resolve in its own dir or root: scan the managed content dirs
+    # for `<slug>.md`. A single unambiguous hit resolves; multiple hits keep the FAIL but report the
+    # ambiguity so the author can qualify the ref with a path. Kept last so typed ids and path-qualified
+    # refs retain their existing semantics.
+    hits = scan_content_dirs_for_slug(ref, root)
+    if len(hits) == 1:
+        return True, None
+    if len(hits) > 1:
+        return False, ("ambiguous across %d content dirs (%s) — qualify it with a path"
+                       % (len(hits), ", ".join(hits)))
+    return False, None
 
 
 def check_document(path, root, findings, now_date, warn_days, fail_days, workplan_wus,
@@ -409,13 +457,14 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
             findings.append(Finding(11, FAIL, rpath, 1,
                                     "checkpoint filename must match YYYY-MM-DD-HHMMSS-<slug>.md"))
 
-    # Rule 9 — file path matches category.
-    if CHECKPOINT_NAME_RE.match(name):
-        if parent_dir_name(path) != "checkpoints":
-            findings.append(Finding(9, FAIL, rpath, 1,
-                                    "checkpoint-named file must live in checkpoints/, not %s/"
-                                    % parent_dir_name(path)))
-    elif ADR_NAME_RE.match(name) and name != "index.md" and not name.endswith(".template.md"):
+    # Rule 9 — file path matches category (ADR placement). Checkpoints are classified by DIRECTORY + shape,
+    # not shape alone: a date+HHMMSS-named file OUTSIDE checkpoints/ (e.g. an audits/ artifact that happens
+    # to share the timestamped filename shape) is NOT a checkpoint, so it gets no "misplaced checkpoint"
+    # finding — the shape is genuinely ambiguous and cannot distinguish a stray checkpoint from a same-named
+    # audit record. The `not CHECKPOINT_NAME_RE.match(name)` guard also stops such a file being misread as
+    # an ADR by the NNNN- prefix it incidentally shares. Only ADR placement is actively checked here.
+    if ADR_NAME_RE.match(name) and not CHECKPOINT_NAME_RE.match(name) \
+            and name != "index.md" and not name.endswith(".template.md"):
         if parent_dir_name(path) != "decisions":
             findings.append(Finding(9, FAIL, rpath, 1,
                                     "ADR-named file (NNNN-*.md) must live in decisions/, not %s/"
@@ -454,9 +503,9 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
                                     "accepted ADR may not be provenance '%s' (need llm-reviewed/human)"
                                     % prov))
 
-    # Rule 14 — checkpoint integrity.
-    if parent_dir_name(path) == "checkpoints" and name != "index.md" \
-            and not name.endswith(".template.md"):
+    # Rule 14 — checkpoint integrity. Keyed on is_checkpoint (directory + timestamp shape): only a real
+    # checkpoint under checkpoints/ is integrity-checked; a timestamp-shaped file elsewhere is not one.
+    if is_checkpoint(path):
         present = set()
         for ln in body.split("\n"):
             m = re.match(r"^\s{0,3}(?:[*_]{0,2})?(\d{1,2})\.\s", ln)
@@ -477,9 +526,13 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
     # Rule 8 — reference fields resolve.
     for fld in REFERENCE_FIELDS:
         for ref in as_list(fields.get(fld)):
-            if not resolve_reference(ref, path, root, extra_id_re):
-                findings.append(Finding(8, FAIL, rpath, field_line.get(fld, 1),
-                                        "%s reference '%s' does not resolve to a file" % (fld, ref)))
+            resolved, detail = resolve_reference(ref, path, root, extra_id_re)
+            if not resolved:
+                if detail:
+                    msg = "%s reference '%s' is %s" % (fld, ref, detail)
+                else:
+                    msg = "%s reference '%s' does not resolve to a file" % (fld, ref)
+                findings.append(Finding(8, FAIL, rpath, field_line.get(fld, 1), msg))
 
     # Rule 15 — work-unit resolves to a WU in now/work-plan.md.
     wu = fields.get("work-unit")
