@@ -2,10 +2,12 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
-## 0.4.1-dev — 2026-07-11
+## 0.4.1 — 2026-07-11 (the fleet-convergence standard)
 
-First-field-adoption findings (the obligations surface's first real install, same evening as the
-v0.4.0 tag) — four doc clarifications + one field-contributed manifest hardening:
+Cut by operator directive as the version the entire fleet converges to. Doc-only deltas over the
+P8-verified v0.4.0 machinery — first-field-adoption findings (the obligations surface's first
+real install, same evening as the v0.4.0 tag): four doc clarifications + one field-contributed
+manifest hardening:
 
 - **Adopt-row self-exemption trap closed** (the headline): an instantiated `now/obligations.md`
   enters the manifest as `action: "create"`, NEVER `"adopt"` — an adopt-row is schema-exempt and
