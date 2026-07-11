@@ -96,9 +96,13 @@ Copy the profile's `.agent-docs/` payload (additively — `profiles.md` §1–3 
     but RETAIN the `<!-- example … -->` rows: they teach the schema, lint rule 17 skips them, and the
     ADOPTER deletes them on first real entry per the template's own first-use note). Its routing row
     already ships in `now/index.md` conditionally-phrased — VERIFY, add nothing. The instantiated
-    file enters the manifest as a normal `action: "create"` row — NEVER `action: "adopt"`:
-    adopt-rows are schema-EXEMPT, which would switch off lint rule 17 for the very file it guards
-    (the self-exemption trap, caught by the first field adoption). Do NOT also seed
+    file enters the manifest as a normal `action: "create"` row — NEVER `action: "adopt"`: adopt
+    is for PRE-EXISTING docs that predate the kit (an instantiated template is kit-created by
+    definition), and an adopt-row would waive the schema-class rules — front-matter presence and
+    validity, provenance, and the rule-12 STALENESS signal — for a live Tier-1 ledger that must
+    honor all of them. *(Erratum from the second field install: rule 17 itself is NOT in the
+    adopt-exempt set and fires regardless of the row's action — the earlier "switches off rule 17"
+    rationale mis-cited the linter; the instruction stands on the grounds above.)* Do NOT also seed
     the handoff `## Obligations` section (1.1b) — the file IS the ledger now; the two forms are
     schema-equivalent and never both live at once. At Full the recommendation LEANS toward this file form,
     but the manifest's detected/confirmed `multi_party` governs (never "auto") — including the DOWN

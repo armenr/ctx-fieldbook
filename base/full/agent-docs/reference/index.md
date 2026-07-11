@@ -1,10 +1,16 @@
 ---
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-09
+last-modified: 2026-07-11
 tags: [meta, index, routing, reference]
 related: [CONVENTIONS]
 ---
+
+<!-- FULL-tier overlay of reference/index.md — layered installs copy this OVER the Standard copy.
+     It is the Standard index PLUS the rows for Full-only reference docs (work-discipline.md), so
+     rule 13 stays complete at every tier: Standard alone never lists a file it doesn't ship;
+     Full layered indexes everything it does. Adding a Full-only reference doc updates THIS file;
+     adding a Standard one updates BOTH copies (same-change rule). -->
 
 # reference/ — routing catalog
 
@@ -31,9 +37,9 @@ re-verified) · Last-verified (facts drift — date the check) · See also.
 
 ## Reference docs
 
-<!-- work-discipline.md is FULL-tier payload: its row lives in the Full overlay of this index
-     (base/full/agent-docs/reference/index.md), which layered installs copy over this file —
-     so Standard-alone never indexes a file it doesn't ship (rule 13, no phantoms). -->
+- 🔨 `work-discipline.md` — the gated-delivery standard-of-record: INTAKE→G0→DECOMPOSE→per-wave G1/G2/G2-docs/G3→G4, the risk-tier dial, and the scale-down floor.
+  **Open when:** starting a work unit, or unsure which gate a piece of work must clear next.
+  **Carry-away:** the gate table maps 1:1 onto the dispatch-charter lifecycle — one definition of "done".
 - 🔍 `doc-refs-contract.md` — the ratified contract for `scripts/doc-refs.sh`, the diff-keyed docs-impact sweep (the twin of the unit-keyed `wu-refs`): gather-then-triage, the five-state output + two fenced lanes, fail-loud + the known-positive canary, the exit semantics the gate wires to.
   **Open when:** running or wiring the docs-impact CLEAR stage (DOCS-time / pre-commit), or authoring the deferred `doc-refs.sh` build against its spec.
   **Carry-away:** the sweep GATHERS + pre-tags; you actively choose only still-true vs stale per row — it triages, never blocks.

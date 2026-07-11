@@ -153,6 +153,19 @@ python3 .claude/hooks/lint-docs.py --root .agent-docs --now "$(date +%Y-%m-%d)"
 bash -n .claude/hooks/pretooluse-safety-gates.sh 2>/dev/null && echo "gate syntax OK"
 ```
 
+**Manifest-consistency check (field-caught staleness).** After the bump, VERIFY the manifest's recorded
+`kit-version` now equals the target kit's `kit-version.txt` — the kit tree is already at hand, so this is
+one read:
+
+```bash
+grep '"kit-version"' .agent-docs/.kit-manifest.json    # what the manifest now records
+cat "$NEWKIT/kit-version.txt"                            # the version just reconciled to
+```
+
+They MUST match. A mismatch means the bump was skipped, or a partial / interrupted apply left the header
+stale — reconcile the header before reporting done: a stale `kit-version` silently mis-bases the NEXT
+upgrade's 3-way merge (every file reads as "changed by the kit" against the wrong version).
+
 Report: `/kit-upgrade <vX> -> <vY>: N fast-forwarded, M kept-yours, K conflicts resolved`. Note any
 file left as the colleague's own (so they know it won't track future kits until they re-adopt it), and
 recommend they review the diff and commit — **do NOT auto-commit.**
@@ -181,7 +194,10 @@ is consent-gated and shown before it runs.
   next-section-only pattern silently no-ops on the EOF case and leaves BOTH forms live. Then VERIFY the
   `now/index.md` routing row (it ships conditionally-phrased — nothing to add) and flip `multi_party`
   true in the manifest header. The promoted file's manifest row is `action: "create"` — NEVER
-  `"adopt"` (adopt-rows are schema-exempt and would switch off rule 17 for the file it guards). **Idempotent:** a re-run that finds `now/obligations.md` already present and
+  `"adopt"` — adopt is for PRE-EXISTING docs; an adopt-row would waive the schema-class rules
+  (front-matter, provenance, rule-12 staleness) on a live Tier-1 ledger. *(Erratum, second field
+  install: rule 17 itself is NOT adopt-exempt and fires regardless — the instruction stands on
+  these grounds.)* **Idempotent:** a re-run that finds `now/obligations.md` already present and
   the section already gone no-ops.
 - **Retirement — file → section** (`multi_party` true → false; the DOWN empty-ceremony flip, ADR-0012). ONLY
   when the ledger holds **no live cross-party rows** — if any live row remains, do NOT retire; report and

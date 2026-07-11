@@ -355,5 +355,33 @@ they follow whichever surface the flip produced without reading any recorded fla
 - `standing-rules-core.md` §"Findings, decisions & review feedback to disk" + §"Context
   lifecycle" · `now/obligations.md` + `now/obligations.template.md` · the `/handoff`
   + `/orient` skill deltas · `scripts/wu-refs.sh` (the catch-all that sweeps it)
-</content>
-</invoke>
+
+## Amendments
+
+**2026-07-11 (field revision, first operators):** Two carve-outs from the first two
+operators to run this ledger on a live surface. Both narrow *where* the full row lifecycle
+is owed; neither touches the safety floor above (materiality gate, required trigger +
+default-if-silent, the `apply-default`-across-a-gate prohibition).
+
+- **Session-boundary fast path.** An obligation both MADE and SETTLED within a *single*
+  session — before any `/handoff` runs — may take a single `log.md` line instead of the
+  full row lifecycle (create → strike-in-place → journal → prune). The surface exists to
+  protect the **session boundary**: ROWS are for debts that OUTLIVE a session and must
+  survive compaction, which is the one failure mode this ledger was built for. A debt that
+  never crosses that boundary needs only the journal — a Tier-1 row created and pruned in
+  the same breath is ceremony, not safety. **Gate-safety is unchanged and overrides the
+  fast path:** an operator- or authorization-gated wait (the Decision's hard constraint)
+  takes a ROW regardless of expected lifetime — because "settled this session" is a
+  prediction, and a prediction is exactly what must not be trusted across an approval /
+  deploy / sign-off gate. Same-session is a lifetime heuristic; the gate is a safety
+  invariant, and the invariant wins.
+
+- **Public-repo gitignored ledger variant.** A **leak-gated public repo** MAY gitignore its
+  instantiated `now/obligations.md` — the ledger names counterparties, and a public tree
+  should not necessarily broadcast who owes whom. This is the **same ruling class as the
+  gitignorable `.kit-manifest.json`**: a surface the kit produces but the repo's leak
+  posture may keep out of the git index. The ledger is still authored, still swept by
+  `/orient` and `/handoff`, and **still linted** — lint walks the working tree on **disk**,
+  not the git index (rule 12 reads the file where it sits), so a gitignored ledger is
+  checked exactly as a tracked one. The single-party / Minimal `## Obligations` handoff
+  section is unaffected: it rides whatever tracking `handoff.md` already has.

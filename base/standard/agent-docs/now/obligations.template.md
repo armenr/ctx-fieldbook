@@ -8,7 +8,7 @@ related: [status, work-plan, open-questions, handoff]
 
 # Obligations — {{PROJECT_NAME}}
 
-<!-- Inter-party obligations ledger (ADR-0012) — the inter-party debt record, both directions.
+<!-- Inter-party obligations ledger (framework-rationale/0012) — the inter-party debt record, both directions.
      Ships as base/standard/agent-docs/now/obligations.template.md. This standalone file is the
      MULTI-PARTY form: instantiate it when the manifest `multi_party` install-decision is true
      (the recommendation leans toward the file at Full; detection + the empty-ceremony DOWN-flip
@@ -17,13 +17,24 @@ related: [status, work-plan, open-questions, handoff]
      bullet shape, as an `## Obligations` section inside `handoff.md` (see the /handoff skill delta).
      This template is the SINGLE schema authority for BOTH forms; the two are schema-equivalent.
      To instantiate the file: fill {{PROJECT_NAME}}, drop the `.template` suffix, and add the routing
-     row to `now/index.md` in the SAME change (ADR-0005 same-change rule).
+     row to `now/index.md` in the SAME change (framework-rationale/0005 same-change rule).
+     Public-repo variant: a leak-gated public repo MAY gitignore this instantiated file (the ledger
+     names counterparties) — the same ruling class as the gitignorable manifest; the linter still
+     applies, because it walks DISK, not the git index (framework-rationale/0012 amendment).
      Delete THIS comment block AND every `<!-- example:start -->…<!-- example:end -->` block on first
      real use. -->
 
 > Inter-party debts, both directions: what you OWE counterparties and what they OWE you — **plus what
 > to do when a counterparty goes silent**. Tier-1: read at session start, UPDATE-IN-PLACE (`/flush`
 > mid-session, swept by `/handoff`, deltas surfaced by `/orient`).
+>
+> **Rows are for debts that OUTLIVE a session** — that boundary is the whole reason this surface exists:
+> to carry an obligation across the compaction / session-end gap where conversation is lost. An
+> obligation both MADE and SETTLED within ONE session, before any `/handoff` runs, may take a single
+> `log.md` line instead of the full row lifecycle (open → strike → journal → prune); a debt that will
+> still be open at the next session boundary gets a row. **Gate-safety is unconditional:** an operator-
+> or authorization-gated wait (approval / sign-off / release / deploy / merge) takes a row regardless of
+> its expected lifetime — the row is the durable record that the gate was respected (framework-rationale/0012 amendment).
 >
 > A row **POINTS at** an `OQ-` / `WU-` / `REV-` / DEFER by id — it never **duplicates** one. `OQ-NNN`
 > is the open question; an obligation row is the *who-owes-whom* + the *silence rule*. A counterparty

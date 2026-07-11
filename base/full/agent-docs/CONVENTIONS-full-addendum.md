@@ -50,7 +50,7 @@ cite the ID, not a body excerpt (core §0.5).
 
 | Prefix | Type | Format | Lives in | Lifecycle |
 |---|---|---|---|---|
-| `FR-NNNN` | **Dispatch-charter** — a scoped sub-agent / workflow-step spec under a wave-plan | `FR-NNNN` | `dispatch-charters/` | drafted → dispatched → verified |
+| `FR-NNNN` | **Dispatch-charter** — a scoped sub-agent / workflow-step spec under a wave-plan | `FR-NNNN` | `dispatch-charters/` | drafting → dispatched → verified |
 | `RV-NNN` | **Revisit anchor** — a typed change-intent marker in code (`REVISIT(RV-NNN <class>): <intent>`), classes `until:` · `retire-at:` · `twin:` · `claim:` | `RV-NNN` | code comments ↔ `reference/revisit-ledger.md` | live → retired (markers removed, ledger row moved) |
 | `R-NNNN` | **Research investigation** — the pipeline dir id | `R-NNNN` | `research/` | landscape → tracks → adversarial → synthesis → sealed |
 | `INC-NNN` | **Incident** | `INC-NNN` | `incidents/` | open → remediated → prevention-linked |

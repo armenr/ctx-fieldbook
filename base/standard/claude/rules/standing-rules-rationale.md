@@ -175,6 +175,25 @@ bug that made it silently return "no references" when there were dozens — the 
 exists to prevent — and it was caught only by running it against a unit with known references. A safety
 check you have not tested against a known-positive is not yet a safety check.
 
+## Cycle start — the docs-impact sweep
+
+The inbound sweep catches obligations pointed *at* a unit; neither it nor the outward scope recon catches
+the mirror failure — a claim in the human docs that this *diff* just falsified. A change edits a symbol, a
+CLI flag, a config key, a license field; the README, the design note, the `--help` text, the in-code
+`// not yet wired` comment still describe the old reality, and each silently becomes a lie. This surface is
+the one the pre-commit dispatcher leaves ungated: human docs are classified neither-`.agent-docs`-doc nor
+code, so nothing mechanical looks at them, and prose drift is invisible until someone acts on the stale
+claim (a wrong dead-code deletion, a mis-cited spec §, a license table missing its most encumbered
+dependency). The docs-impact sweep is the diff-keyed counter to the unit-keyed inbound one: given the diff,
+gather every human-doc claim about the things it changed and triage each — the live call is only still-true
+vs stale, the rest (uncovered, provenance, unverifiable-locally) pre-tagged, and the baseline / retirement
+lanes fenced out. It carries the same scar as its twin — a sweep that silently reports "no claims" is worse
+than none, so it ships with a known-positive fixture test *and* a per-repo canary, and a "(no claims)"
+result is trusted only when the canary fired that run (an empty result is evidence about the query, not the
+world). The generalized design is `framework-rationale/0014` (why diff-scoped, not always-full-corpus; why
+triage-not-block); the sweep contract is `reference/doc-refs-contract.md`; the brownfield answer — new debt
+loud, inherited debt fenced — is `reference/baseline-mechanism.md`.
+
 ## The dispatch contract
 
 A dispatched agent with a fuzzy scope will freelance: fix something adjacent that looked broken, refactor

@@ -116,3 +116,25 @@ decisions you made.
   *Carry-away:* dogfood the DISCIPLINE (skills, ledger, cold-start) without the
   PAYLOAD (a second `.agent-docs/`, a marker block) — for adopters this ADR is
   informational, there is nothing to install.
+
+- **`0014-docs-impact-gate.md`** *(Standard profile)* — a **diff-keyed** doc-refs
+  sweep (the twin of the unit-keyed `wu-refs`) feeds a named **docs-impact CLEAR**
+  stage that *triages, never blocks*, and a baseline mechanism holds an agent
+  accountable only for the doc drift its **own** diffs create or touch.
+  *Open when:* deciding how documentation gets reconciled to what a change
+  actually altered — without punishing drift the adopter inherited.
+  *Carry-away:* gather mechanically, triage by judgment, scoped to what the diff
+  touched; file-age is not truth and a blocking gate false-positives on still-true
+  claims, so the sweep hands the agent a candidate list and draws the
+  accountability line at the change's blast radius.
+
+- **`0015-rewrite-conformance-parity-ledger.md`** *(Full profile, opt-in module
+  `rewrite-conformance`)* — a port/rewrite's byte-conformance verdicts get their
+  own `parity/` ledger tier, a **sibling** of `traceability/`, never a column in it.
+  *Open when:* replacing an existing implementation and needing a durable home for
+  the parity verdicts and their sabotage-proven non-vacuity.
+  *Carry-away:* **PARITY ≠ WIRED** — byte-conformance against an oracle and
+  reachability from a production entrypoint are orthogonal axes; one ledger
+  carrying both makes "done" ambiguous and launders a conformance claim as a
+  reachability proof, so the module is opt-in (no predecessor ⇒ no oracle ⇒
+  nothing to gate).

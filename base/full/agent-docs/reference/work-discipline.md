@@ -39,9 +39,10 @@ per wave:
     ▸ G2    gates green REPRODUCED FIRSTHAND ({{BUILD_CMD}} · {{LINT_CMD}} · {{FMT_CMD}} · {{TEST_CMD}})
             + the diff FENCED to the named scope + IMPL→WIRED (reachable from a real entrypoint,
             PROVEN via {{CODE_INTEL_TOOL}}, not merely compiled)
-  DOCS      a docs pass reconciles docs to the wave diff; self-skips when the diff has no doc-impact
-    ▸ G2-docs public API / CLI / config / protocol / decision changes documented (an ADR stub if a
-            decision surfaced)
+  DOCS      a docs pass reconciles docs to the wave diff via the doc-refs sweep
+            (gather-then-triage; self-skips only when the sweep reports zero changed referents)
+    ▸ G2-docs docs-impact CLEAR — doc-refs sweep run, every row triaged per core §Cycle start,
+            stale/uncovered dispositioned; an ADR stub if a decision surfaced
   REVIEW    adversarial reviewer(s), clean context, reviewer ≠ builder
     ▸ G3    every claim "NOT proven" until source shows it; the DAMAGING direction audited; EVERY
             finding dispositioned in reviews/ — no silent drops
@@ -130,15 +131,31 @@ operator owns where the threshold sits — that is where they spend or save.
       (fallback menu: addendum §C) — not merely compiled; row recorded in `traceability/`.
 - REJECT if: any lint warning, any dead new code, any scope creep.
 
-### G2-docs — DOCS (at the G2→G3 boundary; self-skips on no doc-impact)
+### G2-docs — DOCS-IMPACT CLEAR (at the G2→G3 boundary; self-skips only on a zero-referent sweep)
 
-- [ ] A doc-impact verdict recorded for the wave diff (updated / no-impact).
-- [ ] Public surface changed → API docs / README / CLI help / config reference updated where
-      affected; a `log.md` entry written.
+The DOCS pass reconciles the human-doc corpus to the wave diff. Its mechanical half
+is the `doc-refs` sweep (the diff-keyed twin of the unit-keyed `wu-refs`, framework-rationale/0014):
+it GATHERS candidate claims and pre-tags the fenced lanes — you TRIAGE. It TRIAGES,
+never blocks. The five-state triage vocabulary and the two fenced lanes are owned by
+core §"Cycle start" (the docs-impact-sweep rule) — this gate does not restate them.
+
+- [ ] Ran `scripts/doc-refs.sh <wave-diff-range>` to gather every human-doc claim
+      about the wave's changed referents (degrades to a manual corpus read until the
+      sweep is installed — `doc-refs-contract.md`). **Self-skip is earned only by a
+      zero-referent sweep** (exit 0, empty over the enabled grammars with the canary
+      firing) — never a self-declared "no doc-impact."
+- [ ] Every gathered row TRIAGED per core §"Cycle start" (the five states), minus
+      the sweep-fenced **baseline** / **retirement** lanes (`baseline-mechanism.md`).
+- [ ] Each **stale** row → a doc fix (a `log.md` entry) OR a new `OQ-NNN` / a
+      dispositioned `reviews/` finding (`doc-refs-contract.md` §"where a stale row
+      files"); each **uncovered** row → coverage added OR a recorded no-impact.
+- [ ] The **license-join** check (`doc-refs-contract.md`) resolved where the diff
+      touched a license field — small ≠ safe.
 - [ ] A decision surfaced → an `ADR-NNNN` stub filed in `decisions/`.
-- [ ] Doc-debt the pass cannot resolve → a dispositioned finding or a new `OQ-NNN`, never a silent gap.
-- REJECT if: a public API / CLI flag / config key / protocol behavior changed with no corresponding
-  doc update and no recorded no-impact verdict.
+- [ ] An **unverifiable-locally** (cross-repo) claim → a manual / owed-to-me check
+      (framework-rationale/0012), never silently passed.
+- REJECT if: a public API / CLI flag / config key / protocol behavior changed with a
+  **stale** or **uncovered** row left un-triaged and no recorded no-impact verdict.
 
 ### G3 — REVIEW (adversarial; reviewer ≠ builder, clean context)
 
@@ -239,4 +256,6 @@ yours; the ratchet is not.**
 - `CONVENTIONS.md` §4 (WU spine) · §5 (decision policy) · §7.2 (adversarial separation)
 - `templates/dispatch-charter-template.md` — the `FR-NNNN` scaffold the lifecycle table keys to
 - `reviews/index.md` — where G3 dispositions land (`REV-NNN`)
+- `doc-refs-contract.md` · `baseline-mechanism.md` — the docs-impact CLEAR stage the G2-docs gate
+  above invokes: the diff-keyed sweep contract + its brownfield baseline mechanism
 - the installed stack pack (`rules.md` · `code-intel.md`) — the concrete gate bindings

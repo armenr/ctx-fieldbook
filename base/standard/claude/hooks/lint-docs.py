@@ -3,12 +3,14 @@
 #
 # This is the ENFORCEMENT the CONVENTIONS.md "Lint rules" section refers to. CONVENTIONS ships those
 # rules as a spec; this file makes them real. It implements every rule 1–15 from that section as a
-# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rules 16–17 are kit-local
+# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rules 16–18 are kit-local
 # (not CONVENTIONS rules): rule 16 (WARN-only) nudges `ADR-`-prefixed ADR filenames back toward the
 # canonical unprefixed form without failing the run; rule 17 checks receivable-obligation integrity on a
 # multi-party install's now/obligations.md — every "owed to me" row must name its trigger and its
 # default-if-silent — and passes silently when that file is absent (a single-party install carries the
-# same ledger as a handoff section, not a standalone file).
+# same ledger as a handoff section, not a standalone file); rule 18 (FAIL) gates a full risk-tier
+# dispatch-charter — once its status leaves drafting it must carry a resolved REV-NNN design-rev — and
+# passes silently on any charter with no risk-tier field at all (brownfield-safe, the rule-17 precedent).
 #
 # Portability contract (the colleague may be on macOS / BSD / WSL):
 #   * STOCK Python 3, STDLIB ONLY — no pip installs, no `import yaml`. Front-matter is hand-parsed.
@@ -85,6 +87,8 @@ RULES = {
         "(warn-not-fail)",
     17: "obligations receivable integrity — every '## Owed to me' row in now/obligations.md names a "
         "trigger + a canonical default-if-silent",
+    18: "dispatch-charter design-review gate — a full risk-tier charter past drafting must carry a "
+        "resolved REV-NNN design-rev",
 }
 
 FAIL = "FAIL"
@@ -303,6 +307,22 @@ def as_list(v):
 
 def nonempty_str(v):
     return isinstance(v, str) and v.strip() != ""
+
+
+# Leading markdown emphasis markers (**, *, _, backtick). A table cell whose canonical value the author
+# (or a template legend) has BOLDED — e.g. `**never-chase-never-peek**` — must still satisfy a begins-with
+# or emptiness check: cosmetic markdown may not fail a canonical check. Prefix-strip only (leading), so a
+# begins-with comparison sees the token itself; the anchoring lesson is the same one the example markers
+# carry (a decorated prefix silently never matches an exact-literal test).
+EMPHASIS_LEAD_RE = re.compile(r"^[*_`]+")
+
+
+def strip_emphasis(s):
+    """Return `s` with any leading markdown emphasis markers (**, *, _, backtick) stripped, after a
+    whitespace trim. Non-strings degrade to '' so callers can check emptiness uniformly."""
+    if not isinstance(s, str):
+        return ""
+    return EMPHASIS_LEAD_RE.sub("", s.strip())
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -807,13 +827,17 @@ def lint_owed_to_me(text, rpath, findings):
         who = cells[0] if len(cells) > 0 else ""
         what = cells[1] if len(cells) > 1 else ""
         label = "%s / %s" % (who or "?", what or "?")
+        # Both cell checks compare against the emphasis-STRIPPED value: the template legend bolds the
+        # canonical dispositions (`**never-chase-never-peek**`), and cosmetic markdown must not fail a
+        # canonical check. The original (unstripped) cell text is still shown in the message so the
+        # author sees exactly what is in their table.
         trig = cells[trig_idx] if trig_idx < len(cells) else ""
-        if not trig:
+        if not strip_emphasis(trig):
             findings.append(Finding(17, FAIL, rpath, j + 1,
                                     "owed-to-me row [%s] has an empty Trigger/by-when — a receivable with "
                                     "no trigger can never come due" % label))
         dflt = cells[def_idx] if def_idx < len(cells) else ""
-        if not any(dflt.startswith(tok) for tok in OBLIGATION_DEFAULTS):
+        if not any(strip_emphasis(dflt).startswith(tok) for tok in OBLIGATION_DEFAULTS):
             findings.append(Finding(17, FAIL, rpath, j + 1,
                                     "owed-to-me row [%s] Default-if-silent '%s' must begin with one of %s"
                                     % (label, dflt, list(OBLIGATION_DEFAULTS))))
@@ -839,6 +863,100 @@ def check_obligations_receivable(root, findings):
         del findings[before:]
         findings.append(Finding(17, WARN, rpath, 1,
                                 "could not parse the '## Owed to me' table — verify its structure by hand"))
+
+
+# ---------------------------------------------------------------------------------------------------
+# Rule 18 — dispatch-charter design-review gate (charter-shaped files only). A charter is any doc whose
+# front-matter carries a `charter-id` (the dispatch-charter `FR-NNNN` spine; the long-term mission
+# `charter.md` has no `charter-id` and is never a target). Two front-matter fields govern the gate:
+# `risk-tier` (standard | full) and `design-rev` (a REV-NNN id, empty until earned). The contract: a
+# FULL-tier charter may not advance its `status` PAST the drafting phase (drafting | draft) without a
+# resolved pre-G0 design-review id in `design-rev` — a full-risk surface (turn-control, shared-write
+# state, contracts, irreversible surfaces) earns a multi-lens design review BEFORE it leaves drafting.
+# A STANDARD-tier charter carries no such gate. A charter with NO `risk-tier` field AT ALL is brownfield
+# and the rule passes SILENTLY (the same absent-artifact precedent as rule 17), so an adopter's pre-kit /
+# pre-gate charters never retro-fail. When the gate bites, `design-rev` must be non-empty, match REV-NNN,
+# AND resolve through the SAME reference machinery rule 8 uses (REV- is a canonical ledger prefix). A
+# risk-tier present but outside {standard, full}, or a charter whose front-matter the rule cannot make
+# sense of, degrades to ONE WARN naming the file — never a traceback (the portability contract: a
+# malformed doc is a finding, not a crash).
+# ---------------------------------------------------------------------------------------------------
+
+CHARTER_RISK_TIERS = ("standard", "full")
+# The drafting phase — the ONLY statuses under which a full-tier charter may still lack a design-rev.
+# Kept to exactly the two tokens the rule-18 contract names; a charter that has moved to any OTHER status
+# has "left drafting" and the gate applies. (The canonical initial status the template ships is
+# `drafting`.)
+CHARTER_DRAFTING_STATUSES = ("drafting", "draft")
+DESIGN_REV_RE = re.compile(r"^REV-\d{3}$", re.IGNORECASE)
+
+
+def _check_one_charter(path, root, findings, rpath, extra_id_re):
+    """Apply the rule-18 gate to a single doc. Returns without a finding for any non-charter, template,
+    or brownfield (no risk-tier) doc. Raises nothing the caller does not catch."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError:
+        return  # an unreadable doc is already a rule-1 FAIL from check_document
+    fields, field_line, err = parse_frontmatter(text)
+    if err is not None or not fields:
+        return  # no parseable front-matter — rule 1 owns that finding
+    field_line = field_line or {}
+    if "charter-id" not in fields:
+        return  # not a dispatch-charter
+    if is_template(path, fields):
+        return  # kit scaffolding — a seed's placeholder design-rev is not a live violation
+    if "risk-tier" not in fields:
+        return  # brownfield charter — silent pass (the rule-17 absent-artifact precedent)
+    tier = fields.get("risk-tier")
+    tier_l = tier.lower() if isinstance(tier, str) else None
+    if tier_l not in CHARTER_RISK_TIERS:
+        findings.append(Finding(18, WARN, rpath, field_line.get("risk-tier", 1),
+                                "charter risk-tier '%s' is not one of %s — cannot apply the design-review "
+                                "gate" % (tier, list(CHARTER_RISK_TIERS))))
+        return
+    if tier_l != "full":
+        return  # standard-tier: no design-review gate
+    status = fields.get("status")
+    status_l = status.lower() if isinstance(status, str) else None
+    if status_l is None or status_l in CHARTER_DRAFTING_STATUSES:
+        return  # still in the drafting phase — the gate has not yet bitten
+    cid = fields.get("charter-id") or "?"
+    design_rev = fields.get("design-rev")
+    if not nonempty_str(design_rev):
+        findings.append(Finding(18, FAIL, rpath,
+                                field_line.get("design-rev", field_line.get("status", 1)),
+                                "full-tier charter '%s' has status '%s' (past drafting) but no design-rev — "
+                                "a pre-G0 design review (REV-NNN) is required before a full risk-tier "
+                                "charter leaves drafting" % (cid, status)))
+        return
+    dr = design_rev.strip()
+    if not DESIGN_REV_RE.match(dr):
+        findings.append(Finding(18, FAIL, rpath, field_line.get("design-rev", 1),
+                                "full-tier charter '%s' design-rev '%s' must be a REV-NNN id"
+                                % (cid, design_rev)))
+        return
+    resolved, detail = resolve_reference(dr, path, root, extra_id_re)
+    if not resolved:
+        findings.append(Finding(18, FAIL, rpath, field_line.get("design-rev", 1),
+                                "full-tier charter '%s' design-rev '%s' %s"
+                                % (cid, design_rev, detail or "does not resolve")))
+
+
+def check_charters(root, findings, extra_id_re=None):
+    """Rule 18 driver — walk every markdown doc, apply the charter design-review gate, and degrade any
+    single charter the parser cannot make sense of to ONE WARN (never a traceback)."""
+    for path in iter_markdown(root):
+        rpath = rel(path, root)
+        before = len(findings)
+        try:
+            _check_one_charter(path, root, findings, rpath, extra_id_re)
+        except Exception:
+            del findings[before:]
+            findings.append(Finding(18, WARN, rpath, 1,
+                                    "could not evaluate the charter design-review gate — verify the "
+                                    "risk-tier / design-rev front-matter by hand"))
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -917,7 +1035,7 @@ def iter_markdown(root):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Doc-schema linter for .agent-docs/ (CONVENTIONS.md lint rules 1-15 + kit-local 16-17).")
+        description="Doc-schema linter for .agent-docs/ (CONVENTIONS.md lint rules 1-15 + kit-local 16-18).")
     ap.add_argument("--root", default=".agent-docs",
                     help="root of the .agent-docs tree to lint (default: .agent-docs)")
     ap.add_argument("--now", default=None,
@@ -964,6 +1082,7 @@ def main(argv=None):
     check_index_completeness(root, findings)
     check_adr_prefix_advisory(root, findings)
     check_obligations_receivable(root, findings)
+    check_charters(root, findings, extra_id_re)
 
     # Adopt-exemption: retro-adopted docs (manifest `action: adopt`) predate the kit and carry no kit
     # front-matter, so drop their schema-class findings. Rule 13 (index completeness) is NOT in the

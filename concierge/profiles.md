@@ -87,9 +87,19 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 | `checkpoints/index.md` | `checkpoints/index.md` | verbatim |
 | `memories/index.md` | `memories/index.md` | verbatim |
 | `reference/index.md` | `reference/index.md` | seed stub; root `index.md` routes to `reference/` at Standard |
+| `reference/doc-refs-contract.md` | `reference/doc-refs-contract.md` | kit-template (front-matter lint-clean) — the diff-keyed doc-refs sweep spec (framework-rationale/0014-docs-impact-gate.md); add its `reference/index.md` row in the SAME change (rule 13) |
+| `reference/baseline-mechanism.md` | `reference/baseline-mechanism.md` | kit-template — the brownfield-vs-cold-start baseline design (framework-rationale/0014-docs-impact-gate.md); add its `reference/index.md` row same-change |
 | `reviews/index.md` | `reviews/index.md` | verbatim — the typed `REV-NNN` review-report ledger seed (0.2.0); root `index.md` routes to `reviews/` at Standard |
 | `templates/review-template.md` | `templates/review-template.md` | verbatim — one `REV-NNN` report per review pass; **its `templates/index.md` catalog row must ship** (see scaffold-plan §1.2 note) |
 | `now/obligations.template.md` | `now/obligations.md` | **conditional on the manifest `multi_party` install-decision** (ADR-0012, C1/C5): instantiate ONLY when `multi_party` is true — fill `{{PROJECT_NAME}}`, drop `.template`, add the `now/index.md` routing row same-change. When `multi_party` is false, SKIP this file — the same content seeds as an `## Obligations` section inside `now/handoff.md` (the `/handoff` skill delta), not as a standalone file. `multi_party` is a manifest decision flag, **not** a `{{…}}` token — `parameters.md`'s twelve stay twelve. |
+
+> **The docs-impact sweep is spec-first (framework-rationale/0014-docs-impact-gate.md).** The
+> ratified *contract* ships now — `reference/doc-refs-contract.md` + `reference/baseline-mechanism.md`
+> (the two reference rows above). The mechanical gatherer `scripts/doc-refs.sh` — the diff-keyed twin
+> of `scripts/wu-refs.sh` — is a **later build** gated on that design, so **no `scripts/doc-refs.sh`
+> copies into the target in this build**. Until it lands, the docs-impact CLEAR stage runs on a
+> recorded MANUAL corpus read ("sweep not installed → surfaces read → verdict"), self-upgrading to
+> canary-backed proof when the script ships.
 
 ### `.claude/` (from `base/standard/claude/`)
 | Kit source | Installs to | Note |
@@ -171,6 +181,10 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 | agents-starter | `modules/agents-starter/README.md` | reference only (not copied to target) |
 | recurrence-guard (Standard+) | `modules/recurrence-guard/recurrence-guard.template.sh` | `<target>/scripts/<bug-class>-guard.sh` (COPY + FILL `CONFIG`; **one copy per closed bug class**, not a fixed filename) + a pre-commit registration block (`scaffold-plan.md` §6.4) |
 | recurrence-guard | `modules/recurrence-guard/README.md` | reference only (not copied to target) |
+| rewrite-conformance (Full; **opt-in**) | `modules/rewrite-conformance/parity-index.template.md` | `<target>/.agent-docs/parity/index.md` (fill `<angle-bracket>` names + drop `.template`; add the `.agent-docs/index.md` routing row same-change) |
+| rewrite-conformance | `modules/rewrite-conformance/parity-ledger.template.md` | `<target>/.agent-docs/parity/ledger.md` (fill + drop `.template`; the FIRST row is the oracle-honest reference run) |
+| rewrite-conformance | `modules/rewrite-conformance/parity-map.template.md` | `<target>/.agent-docs/parity/<slice>-parity-map.md` (**per slice that has residue**; fill + drop `.template`) |
+| rewrite-conformance | `modules/rewrite-conformance/README.md` | reference only (not copied to target) |
 
 > The statusline is available at **any** profile (it's a per-user quality-of-life add-on, not tied to
 > Full) and is the one module whose **global** form writes to `~/.claude` — the concierge asks scope
@@ -191,6 +205,15 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 > Claude Code discovers agents by reading `.claude/agents/`. `native-lite` (the lean-on-native-memory
 > variant) is **not part of this build**; as with any module absent from `modules/`, the concierge does
 > not mention it.
+
+> **`rewrite-conformance`** is a **Full-tier opt-in** module (framework-rationale/0015-rewrite-conformance-parity-ledger.md).
+> Offer it ONLY when a project is **replacing an existing implementation and needs behavioral parity** — a
+> port to a new language, a rewrite of a legacy service, a second implementation that must agree with the
+> first byte-for-byte — because a greenfield build has **no predecessor to conform to, hence no oracle, hence
+> nothing to gate** (dead ceremony). It presumes the `traceability/` tier (Full) — the `parity/` ledger it
+> installs is that tier's **sibling**, never a row in it (**PARITY ≠ WIRED**: byte-conformance and
+> production-reachability are orthogonal axes). It wires **no hook** — the parity gate runs inside the
+> existing G1 conformance falsifiers; mechanics + the four load-bearing rules: `modules/rewrite-conformance/README.md`.
 
 ### Enforcement at Full
 - The full gate set + the traceability ledger + (if opted) the revisit-lint pre-commit check.

@@ -151,4 +151,3 @@ the throwaway install proves the mechanics the origin's source-repo posture bypa
 - The concierge install path (what a friend runs) · the ship / release procedure (the
   P8 verify gate) · `standing-rules-core.md` (the discipline the origin follows
   without an installed payload)
-</content>

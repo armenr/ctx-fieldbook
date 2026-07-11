@@ -18,7 +18,7 @@ author their Part B sections. Delete this comment block + inline guidance.
 ---
 provenance: llm-draft
 status: drafting
-template-version: 2.0.0            # §8 — the template revision this charter was scaffolded from
+template-version: 2.1.0            # §8 — the template revision this charter was scaffolded from
 work-unit: WU-NNNN                # §4 spine — the parent work-unit this charter is a leg of
 charter-id: FR-NNNN               # the dispatch-charter's typed id (§B spine)
 wave: <wave-number>              # wave-plan wave (sequenced by file-overlap)
@@ -26,6 +26,8 @@ created: <YYYY-MM-DD>             # LOCAL date (date +%Y-%m-%d), not UTC (§2)
 last-modified: <YYYY-MM-DD>
 base-commit: <SHA the charter assumes>
 model-tier: standard              # cheap | standard | deep — config field, not an inline decision (§B′)
+risk-tier: standard               # standard | full — full = turn-control / shared-write state / contracts / irreversible surfaces (drives rule 18)
+design-rev:                       # pre-G0 multi-lens design-review id (REV-NNN); REQUIRED before status leaves drafting/draft when risk-tier: full — lint rule 18
 related: [<ADR-NNNN, WU-NNNN, sibling FR-NNNN>]
 rollback-handle: null             # builder sets after first commit on the charter branch
 operator-eyes-on: false           # true for the first charter of a wave; planner sets
@@ -37,6 +39,10 @@ tags: [dispatch, wave-<N>]
 ## Part A — Work-spec (PLANNER · the default; the whole charter for most dispatches)
 
 **Single purpose:** <one sentence. If it needs an AND, it is two charters.>
+
+> **Risk-tier gate (rule 18):** a `risk-tier: full` charter cannot advance past `drafting` without a
+> resolvable `design-rev:` (the pre-G0 multi-lens design-review id, `REV-NNN`) — lint rule 18, born from
+> a first-operator process miss. Set `risk-tier` in the front-matter; `standard` (the default) is ungated.
 
 ### File ownership (one-file-one-owner)
 <!-- The EXACT paths this leg OWNS. Wave sequencing keys off file-overlap — two charters in the same
@@ -61,6 +67,10 @@ tags: [dispatch, wave-<N>]
 - [ ] `{{TEST_CMD}}` green; **a behavior change OWES a test that fails without it**
 - [ ] Hands-on: ran the real touched surface and watched it do the right thing (green tests ≠ ran it)
 - [ ] **IMPL→WIRED** proven per the wiring-proof target; traceability row recorded
+- [ ] **Docs-impact swept** for the leg's diff — stale/uncovered rows dispositioned, or a no-impact
+      verdict recorded WITH its execution proof (swept range + grammars + exit 0 + canary), or — until
+      `scripts/doc-refs.sh` lands — a recorded MANUAL corpus-read verdict ("sweep not installed → read
+      surfaces X"). The `docs_impact` return field; N/A only for a read-only leg. framework-rationale/0014.
 - [ ] No new `{{PANIC_EQUIVALENT}}` in library code; errors are propagated, not swallowed
 - [ ] Verifier (clean-context, NEVER the builder — §7.2/§D) independently re-derives: <the claim to
       confirm against the LIVE tree — e.g. "new surface is production-reachable, not just compiled">

@@ -2,6 +2,45 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.5.0 — 2026-07-11 (the docs-impact era)
+
+The **docs-impact gate** (framework-rationale/0014) — the work discipline learns to ask
+*"which documents did my change just falsify?"* — plus the **rewrite-conformance module**
+(framework-rationale/0015) and the batch of field-nominated fixes from the v0.4.1 convergence.
+Designed from a 4-repo field survey; 25 adversarial design findings + 4 build-verify findings
+all applied.
+
+- **docs-impact CLEAR** (spec-first): the `doc-refs` sweep contract — the diff-keyed twin of
+  the unit-keyed `wu-refs` — ships at `reference/doc-refs-contract.md`; the gate wires into
+  work-discipline (G2-docs generalized; self-skip only on a proven zero-referent sweep),
+  the always-on cycle-start discipline (the ONE normative home of the five-state triage
+  vocabulary: still-true · stale · uncovered · provenance/record-fact · unverifiable-locally),
+  the dispatch return schema (`docs_impact`, proof-carrying — a bare "none" is as incomplete
+  as a proofless falsifier claim), and an ADVISORY third pre-commit lane (routed, never
+  touches rc). `reference/baseline-mechanism.md` makes brownfield-vs-cold-start first-class:
+  new debt loud, inherited debt inventoried once and fenced, sealed against laundering.
+  **The `scripts/doc-refs.sh` build is a chartered follow-up** — every invocation degrades to
+  a no-op-with-notice until it lands.
+- **`modules/rewrite-conformance/`** (opt-in, Full): the parity-ledger discipline harvested
+  from the fleet's first certified rewrite — PARITY ≠ WIRED as a durable sibling tier of
+  traceability/, golden-corpus oracle contract, three templates. Zero field code.
+- **Lint rule 18** (FAIL): a `risk-tier: full` dispatch charter cannot advance past drafting
+  without a resolvable `design-rev: REV-NNN` — a witness review is one lens, not the station
+  (born from a first-operator process miss). Charter template → 2.1.0 with the carrier fields.
+- **Rule 17 emphasis fix:** markdown-bold canonical values no longer false-FAIL (first-install
+  finding; the prefix-matching lesson, third application).
+- **Obligations ledger amendments** (framework-rationale/0012, dated): the session-boundary
+  fast path (rows are for debts that OUTLIVE a session; same-session debts may take a journal
+  line — gate-safety rows always required) and the public-repo gitignored-ledger variant.
+- **Fixes:** kit-rationale citations path-qualified in adopter-facing text (the ADR-id
+  collision class); the rule-17 adopt-exemption rationale erratum (rule 17 was never
+  adopt-exempt — the instruction stands on schema-rule grounds; credited to the second field
+  install); reference/index.md made overlay-correct (Full ships its own copy — retires the
+  standalone-tier lint artifact); charter lifecycle vocabulary reconciled to "drafting";
+  kit-upgrade gains the manifest kit_version consistency check; four leaked build-artifact
+  XML tags swept from payload (incl. one shipped since v0.4.0 — the sweep is now a standing
+  ship check).
+
 ## 0.4.1 — 2026-07-11 (the fleet-convergence standard)
 
 Cut by operator directive as the version the entire fleet converges to. Doc-only deltas over the

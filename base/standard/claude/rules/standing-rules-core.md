@@ -129,6 +129,20 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
   in-flight uncommitted files are swept). Cheap (one command, read-only), and it fails LOUD not silent — a
   sweep that silently under-reports is worse than none, so **test your safety tools** (the original shipped
   with a reserved-bash-variable bug that returned "no references" against a WU with dozens of real hits).
+- **Docs-impact sweep at DOCS time (the diff-keyed companion to the unit-keyed inbound sweep — framework-rationale/0014).**
+  The inbound/unit-keyed sweep gathers what awaits a UNIT; this diff-keyed sweep gathers what a DIFF may
+  have falsified in the docs downstream of it. At the DOCS step of a wave (and, advisory, at pre-commit)
+  run `scripts/doc-refs.sh <diff-range>` to gather every human-doc claim about the changed things —
+  across the WHOLE corpus, not just `.agent-docs` — and TRIAGE each: **still-true · stale · uncovered ·
+  provenance/record-fact · unverifiable-locally** (minus the sweep-fenced **baseline** / **retirement**
+  lanes). The active call is only still-true vs stale; the rest are pre-tagged. It GATHERS + pre-tags;
+  you triage. It **reads the colleague's human docs by default** (reading is not colonizing) with
+  per-surface opt-out, is **flag-only (never auto-edits)**, runs **standalone** (no `.agent-docs`
+  needed), and **triages, never blocks**. Same fail-LOUD scar as the unit-keyed twin — a sweep that
+  silently reports "no claims" is worse than none, so it ships with a known-positive fixture test AND a
+  per-repo canary (a "(no claims)" result is trusted only if the canary fired that run). A stale row →
+  a doc fix / a new `OQ-` / a dispositioned `reviews/` finding; an uncovered row → coverage or a
+  recorded no-impact.
 
 ## Dispatch contract — scope-fence + halt-and-report, never freelance
 
@@ -156,8 +170,14 @@ prompt + the return schema, every time.
 - **Returns are structured and REQUIRE the honesty fields.** Every dispatch return carries: proof the
   falsifier ran RED on the unmodified HEAD (for the right reason) · the guard's non-vacuous negative
   control (broke it, watched the control fail, restored) · the IMPL→WIRED reachability proof · the
-  `discoveries[]` field (present even when empty) · a per-finding disposition for anything it reviewed.
-  A return missing these is incomplete, not done.
+  `discoveries[]` field (present even when empty) · the `docs_impact` field for any leg that produces a
+  diff (**N/A for read-only recon/fixture/review/verify legs**) — the doc-refs triage for the leg's own
+  diff, carrying its EXECUTION PROOF: `none` is valid only WITH the swept diff-range + the enabled
+  grammar set + exit 0 + the known-positive canary firing (or, until the sweep is installed, "sweep not
+  installed → manual read of surfaces X → verdict"); a bare "none" is incomplete like a proofless
+  falsifier claim. It does NOT overlap `discoveries[]` (the sweep's typed doc-triage for this diff vs
+  free-form out-of-lane findings; framework-rationale/0014) · a per-finding disposition for anything it reviewed. A
+  return missing these is incomplete, not done.
 - **Don't trust an agent's self-report** that it wrote/verified something — `ls`/grep the live artifact
   yourself; reproduce a relayed bug/finding firsthand against the live tree before filing or acting on it.
 

@@ -11,8 +11,8 @@ related: [lint-docs]
 This is the **enforcement** that the `.agent-docs/CONVENTIONS.md` *"Lint rules"* section refers to.
 CONVENTIONS ships those rules as a spec and is honest that only *index completeness* was ever
 hook-enforced; the rest were advisory. `lint-docs.py` makes **all fifteen** real — each a discrete
-check with a `PASS` / `FAIL` (or `WARN`) verdict and a `file:line` message — and adds two **kit-local**
-checks (16, 17) the spec does not enumerate.
+check with a `PASS` / `FAIL` (or `WARN`) verdict and a `file:line` message — and adds three **kit-local**
+checks (16, 17, 18) the spec does not enumerate.
 
 Language-agnostic and dependency-free by design: **stock Python 3, standard library only** (no
 `pip install`, no `import yaml` — front-matter is hand-parsed). It runs the same on Linux, macOS/BSD,
@@ -38,7 +38,7 @@ error (bad `--root`, bad `--now`). **Warnings never change the exit code.** Outp
 
 ## The checks (rule → CONVENTIONS mapping)
 
-Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* section; **16–17 are kit-local**
+Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* section; **16–18 are kit-local**
 (marked as such in the last column).
 
 | # | Check | Class | CONVENTIONS ref |
@@ -60,6 +60,7 @@ Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* secti
 | 15 | `work-unit:` resolves to a WU in `now/work-plan.md` | FAIL | Lint rule 15 · §4 |
 | 16 | Advisory: ADR filenames carrying a redundant `ADR-` prefix (canonical is `NNNN-slug.md`) | **WARN** | kit-local advisory (not a CONVENTIONS rule) |
 | 17 | **Obligations receivable integrity** — every `## Owed to me` data row in `now/obligations.md` names a trigger **and** a canonical default-if-silent | FAIL | kit-local (obligations ledger; silent when the file is absent) |
+| 18 | **Charter design-review gate** — a `full` risk-tier dispatch-charter whose `status` has left drafting must carry a resolved `REV-NNN` `design-rev` | FAIL | kit-local (dispatch-charters; silent when a charter carries no `risk-tier`) |
 
 ### Notes on specific rules
 
@@ -119,13 +120,31 @@ Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* secti
   `## Owed to me` table and requires, on every **data** row, both a non-empty **Trigger / by-when** cell
   (without it a receivable can never come due) and a **Default-if-silent** cell beginning with one of the
   canonical dispositions — **`chase-once`**, **`apply-default`**, **`never-chase-never-peek`** (a row may
-  append a clause after the token). Each violation is a `FAIL` naming the row's *Counterparty / What*. Rows
+  append a clause after the token). Both cell checks **strip leading markdown emphasis** (`**`, `*`, `_`,
+  backtick) before comparing, so a cosmetically bolded value — the template legend bolds these tokens,
+  e.g. `**never-chase-never-peek**` — still matches its canonical form; cosmetic markdown must not fail a
+  canonical check. Each violation is a `FAIL` naming the row's *Counterparty / What*. Rows
   the template ships between the `<!-- example:start -->` / `<!-- example:end -->` markers are illustrative
   (delete-on-first-use) and are **skipped**; the header and separator rows are skipped too. Columns are
   found by **header name** (a cell containing "trigger" / "default"), not by position, so the exact schema
   wording is tolerated. A table the parser cannot make sense of degrades to **one `WARN`** naming the file —
   never a traceback (the portability contract: a malformed doc is a finding, not a crash). The `## Owed by
   me` (debt) table has no silence rule and is not checked by this rule.
+- **Rule 18 (charter design-review gate) keys on a front-matter field.** It applies only to a
+  **charter-shaped** doc — one whose front-matter carries a `charter-id` (a dispatch-charter `FR-NNNN`; the
+  long-term mission `charter.md` has no `charter-id` and is never a target). Two fields govern it:
+  `risk-tier` (`standard` | `full`) and `design-rev` (a `REV-NNN` id). A **full**-tier charter may not
+  advance its `status` past the drafting phase (`drafting` | `draft`) without a `design-rev` that is
+  non-empty, matches `REV-NNN`, **and** resolves through the **same** reference machinery rule 8 uses
+  (`REV-` is a canonical ledger prefix) — the pre-G0 multi-lens design review a full-risk surface
+  (turn-control, shared-write state, contracts, irreversible surfaces) earns before it leaves drafting.
+  A **standard**-tier charter carries no such gate. **Brownfield-safe:** a charter with **no `risk-tier`
+  field at all** passes **silently** (the same absent-artifact precedent as rule 17), so an adopter's
+  pre-kit charters never retro-fail — and because the gate turns on a field, not a filename, it is inert
+  on the whole corpus until a team opts a charter in. A `risk-tier` present but outside `{standard, full}`,
+  or any charter whose front-matter the rule cannot make sense of, degrades to **one `WARN`** naming the
+  file — never a traceback. Kit-shipped charter scaffolding (`templates/`, `.template.md`,
+  `provenance: kit-template`) is skipped, so a seed's placeholder `design-rev` is never a live violation.
 - **Adopt-exemption (retro-adopted corpus).** Docs recorded `action: adopt` in
   `.agent-docs/.kit-manifest.json` predate the kit and carry no kit front-matter, so the schema-class
   rules (1, 2, 3, 4, 5, 6, 10, 12) **plus rule 14 (checkpoint integrity)** are skipped for those paths;
