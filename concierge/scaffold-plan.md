@@ -14,6 +14,13 @@ concierge shows this as the Q6 dry-run plan, then — on an explicit yes — exe
 recording each action to the manifest **as it happens** (`merge-strategy.md`). All *source* paths are
 relative to this kit folder; all *dest* paths are under `<target>` (the repo from Q1).
 
+**Source fidelity (non-negotiable).** Every *source* read comes from a clean extract of the pinned
+`kit_ref` — a `git archive <kit_ref>` or a `git worktree` checked out at that tag/SHA — **never the
+origin's live working tree**, because a mid-build working tree once shipped its uncommitted state into an
+install. Extracting from the immutable pin is exactly what makes an install reproducible from the recorded
+`kit_ref` and immune to in-flight kit edits (the pin protocol in `kit-upgrade`/`merge-strategy.md` records
+which ref; this rule governs that reads actually come FROM it).
+
 **Inputs.**
 - `profile` ∈ `{minimal, standard, full}`
 - `stack` ∈ `{rust, node-ts, python, go, generic}`
@@ -137,8 +144,10 @@ dry-run plan and the manifest are stable across runs.
     Minimal: skip (no standing-rules layer to bind them to). Without this step the
     `{{CODE_INTEL_TOOL}}` pointers in standing-rules dangle at nothing.
 2.1b **Scripts** — Standard+: COPY-VERBATIM `base/standard/scripts/wu-refs.sh` → `scripts/wu-refs.sh`
-    (`chmod +x`) — the cycle-start inbound-reference sweep the standing-rule invokes (`git grep`-only, no
-    tokens to FILL). Minimal: skip (the sweep pairs with the Standard+ orchestration discipline).
+    AND `base/standard/scripts/doc-refs.sh` → `scripts/doc-refs.sh` (`chmod +x` both) — the cycle-start
+    inbound-reference sweep and its diff-keyed docs-impact twin the standing rules invoke (`git grep`/
+    `git diff`-only, no tokens to FILL). Minimal: skip (both sweeps pair with the Standard+
+    orchestration discipline).
 2.2 **Skills** — bare-name dirs under `.claude/skills/` (never namespaced, so `/orient` muscle memory
     transfers; distillation decision on skills). Minimal: FILL `skills/{orient,flush,handoff}/SKILL.md`.
     Standard+: FILL `skills/{sitrep,debrief,distill-lessons}/SKILL.md` and COPY-VERBATIM

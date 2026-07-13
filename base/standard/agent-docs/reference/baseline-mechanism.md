@@ -2,7 +2,7 @@
 provenance: kit-template
 created: 2026-07-11
 last-modified: 2026-07-11
-related: [0014-docs-impact-gate, doc-refs-contract, 0012-obligations-ledger, 0008-doc-size-disposition, 0007-revisit-anchor-ledger]
+related: [doc-refs-contract, CONVENTIONS]
 tags: [reference, brownfield, baseline, adopt-exemption, docs-impact, drift, scheduled-drift]
 ---
 

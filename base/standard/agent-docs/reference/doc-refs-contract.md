@@ -2,7 +2,7 @@
 provenance: kit-template
 created: 2026-07-11
 last-modified: 2026-07-11
-related: [0014-docs-impact-gate, 0009-inbound-reference-sweep, 0010-reviews-findings-home, 0012-obligations-ledger]
+related: [baseline-mechanism, CONVENTIONS]
 tags: [reference, spec, contract, docs-impact, sweep, standard-profile]
 ---
 

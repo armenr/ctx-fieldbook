@@ -193,6 +193,16 @@ IF is the trigger to watch for, the THEN is the standing answer.
 | Draft agents **write docs to disk AND return a placeholder/summary** in structured output (disk ≠ return → phantom or clobbered docs) | Use **RETURN-ONLY** draft prompts (no file tools); reconcile disk-vs-return **per-doc**; list-verify every claimed path; recover any placeholder'd doc from the agent's transcript. |
 | Agents **transiently error mid-run** | **RESUME the interrupted run** (replay what already succeeded, re-run only the failed legs) — do NOT re-dispatch fresh. |
 
+### Fail-loud on every dependent fan-out
+
+A fan-out (a Workflow or a multi-Agent dispatch) whose next phase depends on the FULL set must assert
+`received === expected` at that boundary and THROW on a shortfall — a dropped unit that isn't counted is
+invisible, `COMPLETED` is not `COMPLETE`, and the run envelope lies both ways. The one normative statement
+of this rule — R1–R6, the two sanctioned shortfall paths (halt-and-repair · declared-degraded), the
+reference primitive, and the hardened declared-degraded escape-hatch grammar — lives in
+`.agent-docs/reference/fail-loud-dispatch-contract.md` and is mechanised by the `dispatch-gate` PreToolUse
+hook; this section points there and never restates it.
+
 ## Context lifecycle
 
 - `/orient` at session start, `/flush` mid-session, `/handoff` at session end / pre-compaction. Write a

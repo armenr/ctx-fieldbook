@@ -108,6 +108,26 @@ the parentheses changes across upgrades (`merge-strategy.md`); the kit's `hooks`
 additions in `settings.json`), preserving everything the colleague added around it. Back up before
 re-merging, validate `settings.json` still parses after.
 
+**Tier-layered overlay files are special** (a file the kit ships in BOTH the Standard and the Full
+overlay — concretely `.agent-docs/reference/index.md`, and any future doc the Full overlay layers OVER its
+Standard copy). Its installed dest is whichever tier the install LAYERED last: at a Full install the Full
+overlay was copied OVER the Standard copy, so the dest tracks the **Full** source; at Standard it tracks
+the Standard source. Resolve `THEIRS` from the overlay matching the manifest `profile` — the new kit's
+`base/full/…` copy for a Full install, `base/standard/…` for Standard — **never blindly from
+`base/standard/`.** 3-waying a Full-layered dest against the Standard-tier source would show the Standard
+copy as "theirs" and fast-forward the installed index DOWN a tier, dropping the Full-only rows (e.g. the
+`work-discipline.md` routing row) and regressing rule 13. Resolve the tier deliberately from the profile;
+never let one tier's overlay clobber the other's layered copy.
+
+**A template amendment never auto-propagates to a living instance.** The kit owns the TEMPLATE
+(`templates/*.template.md`, `now/*.template.md`); the INSTANCE the colleague instantiated from it — a
+`charter.md`, a `now/status.md`, an ADR body — is their content, which the manifest does not own. When the
+new kit amends a template, 3-way the TEMPLATE file itself (fast-forward if the colleague hasn't edited it)
+— but do NOT rewrite the already-instantiated instance to match: **hand-apply is the sanctioned path.**
+Surface the template delta ("the charter template gained a section X") so the colleague can port it into
+live instances at their discretion; auto-propagating a template change into an instance would clobber the
+very content the never-touch-the-colleague's-content rule protects.
+
 ### 4. Present the plan (dry-run FIRST — no writes yet)
 
 Show a compact reconcile plan grouped by action, so the colleague sees exactly what changes before

@@ -3,14 +3,18 @@
 #
 # This is the ENFORCEMENT the CONVENTIONS.md "Lint rules" section refers to. CONVENTIONS ships those
 # rules as a spec; this file makes them real. It implements every rule 1–15 from that section as a
-# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rules 16–18 are kit-local
+# discrete check with a PASS/FAIL (or WARN) verdict and a `file:line` message. Rules 16–19 are kit-local
 # (not CONVENTIONS rules): rule 16 (WARN-only) nudges `ADR-`-prefixed ADR filenames back toward the
 # canonical unprefixed form without failing the run; rule 17 checks receivable-obligation integrity on a
 # multi-party install's now/obligations.md — every "owed to me" row must name its trigger and its
 # default-if-silent — and passes silently when that file is absent (a single-party install carries the
 # same ledger as a handoff section, not a standalone file); rule 18 (FAIL) gates a full risk-tier
-# dispatch-charter — once its status leaves drafting it must carry a resolved REV-NNN design-rev — and
-# passes silently on any charter with no risk-tier field at all (brownfield-safe, the rule-17 precedent).
+# dispatch-charter — once its status leaves drafting it must carry a resolved REV-NNN design-rev —
+# recognizing a charter by its `charter-id` front-matter OR (filename-keyed) an `FR-NNNN-slug.md` under
+# dispatch-charters/, and passing silently on any charter with no risk-tier field at all (brownfield-safe,
+# the rule-17 precedent); rule 19 (FAIL) enforces the docs-impact baseline SEAL contract — a present
+# baseline ledger (reference/docs-baseline.md) must carry a recorded seal and no parked row may post-date
+# it — silent when that ledger is absent, and (like rule 17) NOT adopt-exempt.
 #
 # Portability contract (the colleague may be on macOS / BSD / WSL):
 #   * STOCK Python 3, STDLIB ONLY — no pip installs, no `import yaml`. Front-matter is hand-parsed.
@@ -89,6 +93,8 @@ RULES = {
         "trigger + a canonical default-if-silent",
     18: "dispatch-charter design-review gate — a full risk-tier charter past drafting must carry a "
         "resolved REV-NNN design-rev",
+    19: "baseline-integrity — a sealed docs-baseline is write-once: it carries a seal, and no parked row "
+        "may post-date it",
 }
 
 FAIL = "FAIL"
@@ -889,6 +895,33 @@ CHARTER_RISK_TIERS = ("standard", "full")
 # `drafting`.)
 CHARTER_DRAFTING_STATUSES = ("drafting", "draft")
 DESIGN_REV_RE = re.compile(r"^REV-\d{3}$", re.IGNORECASE)
+# A filename-keyed dispatch-charter: identity carried in an `FR-NNNN-slug.md` filename directly under a
+# dispatch-charters/ (or dispatch/) dir, with NO `charter-id` front-matter. This form is RECOGNIZED — not
+# CANONIZED: `charter-id` stays the canonical spine (this mirrors the ADR-prefix precedent in rule 16,
+# where an `ADR-NNNN` filename is recognized without becoming canonical). Before this, a filename-keyed
+# charter early-returned the detector on its absent `charter-id`, so the whole design-review gate silently
+# no-op'd on it — the inert-by-absence silent-vacuity hole this linter exists to kill.
+CHARTER_NAME_RE = re.compile(r"^FR-\d{3,4}-[a-z0-9].*\.md$", re.IGNORECASE)
+CHARTER_DIRS = ("dispatch-charters", "dispatch")
+
+
+def is_charter_file(path):
+    """A dispatch-charter RECOGNIZED by DIRECTORY + SHAPE (mirrors is_adr / is_checkpoint): an
+    `FR-NNNN-slug.md` directly under a dispatch-charters/ (or dispatch/) dir. index.md and templates are
+    never charters; the long-term mission `charter.md` does not match the FR-NNNN shape, so it is never a
+    target (the same exclusion the front-matter path relies on)."""
+    name = os.path.basename(path)
+    if name == "index.md" or name.endswith(".template.md"):
+        return False
+    if not CHARTER_NAME_RE.match(name):
+        return False
+    return parent_dir_name(path) in CHARTER_DIRS
+
+
+def _charter_id_from_name(name):
+    """Extract the `FR-NNNN` id from a filename-keyed charter name (for the finding message), or None."""
+    m = re.match(r"^(FR-\d{3,4})-", name, re.IGNORECASE)
+    return m.group(1).upper() if m else None
 
 
 def _check_one_charter(path, root, findings, rpath, extra_id_re):
@@ -903,7 +936,10 @@ def _check_one_charter(path, root, findings, rpath, extra_id_re):
     if err is not None or not fields:
         return  # no parseable front-matter — rule 1 owns that finding
     field_line = field_line or {}
-    if "charter-id" not in fields:
+    # Detection widens beyond the canonical `charter-id` front-matter to ALSO recognize a filename-keyed
+    # charter (an `FR-NNNN-slug.md` under dispatch-charters/): without this the absent `charter-id`
+    # early-returned here and the entire gate silently no-op'd on such a charter (the silent-vacuity hole).
+    if "charter-id" not in fields and not is_charter_file(path):
         return  # not a dispatch-charter
     if is_template(path, fields):
         return  # kit scaffolding — a seed's placeholder design-rev is not a live violation
@@ -922,7 +958,7 @@ def _check_one_charter(path, root, findings, rpath, extra_id_re):
     status_l = status.lower() if isinstance(status, str) else None
     if status_l is None or status_l in CHARTER_DRAFTING_STATUSES:
         return  # still in the drafting phase — the gate has not yet bitten
-    cid = fields.get("charter-id") or "?"
+    cid = fields.get("charter-id") or _charter_id_from_name(os.path.basename(path)) or "?"
     design_rev = fields.get("design-rev")
     if not nonempty_str(design_rev):
         findings.append(Finding(18, FAIL, rpath,
@@ -957,6 +993,136 @@ def check_charters(root, findings, extra_id_re=None):
             findings.append(Finding(18, WARN, rpath, 1,
                                     "could not evaluate the charter design-review gate — verify the "
                                     "risk-tier / design-rev front-matter by hand"))
+
+
+# ---------------------------------------------------------------------------------------------------
+# Rule 19 — baseline-integrity (the docs-impact SEAL contract; baseline-mechanism.md §"Anti-laundering —
+# the baseline is SEALED and write-once"). The docs-impact baseline parks inherited drift so a diff-scoped
+# gate does not drown a brownfield adopter — and the whole accountability line ("new debt loud") rests on
+# that baseline NOT becoming a laundry where a claim you just broke gets re-labelled "inherited." This rule
+# enforces the STATICALLY-checkable half of the seal contract (the git-history "a row's claim was edited
+# after the seal" half needs a diff and is the doc-refs sweep's job): if the baseline ledger exists it MUST
+# carry a recorded seal, and NO parked row's inventory-date may post-date that seal (a post-seal row is a
+# suspected launder — only the sealed one-shot inventory may create rows). It keys on the runtime FILE and
+# is SILENT when the ledger is absent (a cold-start / no-baseline repo — the rule-17 absent-artifact
+# precedent), and — mirroring rule 17 — it is NOT adopt-exempt: it guards the accountability line, not a
+# schema convenience, so it fires regardless of any manifest `action: adopt` row (it is deliberately absent
+# from SCHEMA_CLASS_RULES). A ledger the parser cannot make sense of degrades to ONE WARN naming the file,
+# never a traceback (the portability contract: a malformed doc is a finding, not a crash).
+# ---------------------------------------------------------------------------------------------------
+
+def load_baseline_seal(root, ledger_text=None):
+    """Return a datetime.date for the recorded baseline seal, or None.
+
+    Sources, in order: the manifest `baseline-sealed-at` (`<root>/.kit-manifest.json` — the Standard+ home
+    per baseline-mechanism.md §Homes), then — standalone, where kit front-matter may be absent — a
+    `baseline-sealed-at` token in the ledger's own front-matter or body. The value may be a bare date or
+    `<sha> <date>`; a YYYY-MM-DD is extracted from it.
+    """
+    manifest = os.path.join(root, ".kit-manifest.json")
+    try:
+        with open(manifest, "r", encoding="utf-8", errors="replace") as fh:
+            data = json.load(fh)
+        if isinstance(data, dict) and isinstance(data.get("baseline-sealed-at"), str):
+            m = re.search(r"\d{4}-\d{2}-\d{2}", data["baseline-sealed-at"])
+            if m:
+                d = parse_date(m.group(0))
+                if d is not None:
+                    return d
+    except (OSError, ValueError):
+        pass
+    if ledger_text is not None:
+        for ln in ledger_text.split("\n"):
+            if "baseline-sealed-at" in ln.lower():
+                m = re.search(r"\d{4}-\d{2}-\d{2}", ln)
+                if m:
+                    return parse_date(m.group(0))
+    return None
+
+
+def _baseline_seal_declared(root, text):
+    """True if a `baseline-sealed-at` token is recorded anywhere (manifest OR the ledger) — distinct from
+    whether it parses to a real date (checked separately), so an unsealed ledger and a malformed seal give
+    different, honest findings."""
+    manifest = os.path.join(root, ".kit-manifest.json")
+    try:
+        with open(manifest, "r", encoding="utf-8", errors="replace") as fh:
+            mdata = json.load(fh)
+        if isinstance(mdata, dict) and "baseline-sealed-at" in mdata:
+            return True
+    except (OSError, ValueError):
+        pass
+    return "baseline-sealed-at" in text.lower()
+
+
+def lint_baseline_integrity(text, root, rpath, findings):
+    """Enforce the seal invariants on the docs-baseline ledger. Appends findings in place; may raise, and
+    the caller wraps this so a table shape it did not anticipate degrades to one WARN rather than a crash."""
+    if not _baseline_seal_declared(root, text):
+        findings.append(Finding(19, FAIL, rpath, 1,
+            "baseline ledger present but UNSEALED — a write-once baseline requires a recorded "
+            "'baseline-sealed-at' (in .kit-manifest.json or the ledger header); an unsealed baseline "
+            "can be laundered"))
+        return
+    seal = load_baseline_seal(root, text)
+    if seal is None:
+        findings.append(Finding(19, FAIL, rpath, 1,
+            "baseline 'baseline-sealed-at' carries no parseable YYYY-MM-DD — the seal must be a real date "
+            "for post-seal rows to be checkable"))
+        return
+
+    # Check each parked DATA row's inventory-date against the seal. Locate the table + the inventory-date
+    # column by HEADER NAME (not position), same tolerance rule 17 uses.
+    lines = text.split("\n")
+    header = None
+    inv_idx = None
+    for j, raw in enumerate(lines):
+        cells = split_md_row(raw)
+        if cells is None or is_md_separator(cells):
+            continue
+        if header is None:
+            header = cells
+            for k, h in enumerate(header):
+                if inv_idx is None and "inventory" in h.lower():
+                    inv_idx = k
+            if inv_idx is None:
+                return  # no inventory-date column → no dated rows to check; the seal itself is verified
+            continue
+        inv = strip_emphasis(cells[inv_idx]) if inv_idx < len(cells) else ""
+        label = strip_emphasis(cells[0]) if cells else "?"
+        row_date = parse_date(inv)
+        if row_date is None:
+            findings.append(Finding(19, FAIL, rpath, j + 1,
+                "baseline row [%s] has no parseable inventory-date '%s' — an undatable parked row cannot "
+                "be verified against the seal (a laundering vector)" % (label or "?", inv)))
+            continue
+        if row_date > seal:
+            findings.append(Finding(19, FAIL, rpath, j + 1,
+                "baseline row [%s] inventory-date %s POST-DATES the seal %s — a fresh break cannot be "
+                "hand-parked into 'inherited' (suspected launder; only the sealed one-shot writes rows)"
+                % (label or "?", row_date, seal)))
+
+
+def check_baseline_integrity(root, findings):
+    """Rule 19 driver — the docs-baseline ledger lives at `<root>/reference/docs-baseline.md` (Standard+
+    home). Silent when absent; degrades a ledger it cannot parse to ONE WARN."""
+    path = os.path.join(root, "reference", "docs-baseline.md")
+    if not os.path.isfile(path):
+        return  # cold-start / no-baseline repo — nothing to check (rule-17 absent-artifact precedent)
+    rpath = rel(path, root)
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError as exc:
+        findings.append(Finding(19, WARN, rpath, 1, "cannot read docs-baseline.md: %s" % exc))
+        return
+    before = len(findings)
+    try:
+        lint_baseline_integrity(text, root, rpath, findings)
+    except Exception:
+        del findings[before:]
+        findings.append(Finding(19, WARN, rpath, 1,
+            "could not parse the baseline ledger — verify its seal + parked rows by hand"))
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -1083,6 +1249,7 @@ def main(argv=None):
     check_adr_prefix_advisory(root, findings)
     check_obligations_receivable(root, findings)
     check_charters(root, findings, extra_id_re)
+    check_baseline_integrity(root, findings)
 
     # Adopt-exemption: retro-adopted docs (manifest `action: adopt`) predate the kit and carry no kit
     # front-matter, so drop their schema-class findings. Rule 13 (index completeness) is NOT in the

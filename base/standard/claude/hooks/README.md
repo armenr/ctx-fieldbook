@@ -16,6 +16,7 @@ Small, self-contained shell hooks wired through `.claude/settings.json`. Each de
 | `precompact-handoff-trigger.sh` | PreCompact | Injects a `systemMessage` prompting `/handoff` before context is summarized, so dead-ends reach disk. |
 | `subagentstart-prefix.sh` | SubagentStart | Injects the multi-agent prompt-prefix; for built-in `Explore`/`Plan` agents (which skip `CLAUDE.md`) also cats `standing-rules-core.md`. |
 | `pretooluse-safety-gates.sh` | PreToolUse (`Bash`) | Blocks/asks on universal foot-guns (force-push to a protected branch, checks-bypass, recursive `rm`, `git reset --hard`) and injects cwd-safety context on mutative git/fs ops. |
+| `dispatch-gate/dispatch-gate.sh` | PreToolUse (`Agent` \| `Workflow` — TWO blocks, distinct commands) | The fail-loud dispatch-conformance gate (`reference/fail-loud-dispatch-contract.md`): blocks unpinned *declared* Agent dispatches (graded — WARN when undeclared), hash-checks the paste-in fail-loud preamble, and enforces the declaration lane in return-locus form on Workflow scripts. **Brownfield-inert** — silent on ungoverned dispatches. Depends on `python3`, not `jq`; when `python3` is missing it degrades LOUD (a did-not-run notice), never a silent pass. |
 
 > **Tier note.** `sessionstart-state-router.sh` and `precompact-handoff-trigger.sh` SHIP in the
 > Minimal tier (`base/minimal/claude/hooks/`) — Standard layers over Minimal, so an installed tree
@@ -27,6 +28,9 @@ Small, self-contained shell hooks wired through `.claude/settings.json`. Each de
 - **`bash`** — hooks use `#!/usr/bin/env bash` (bash 3.2+, i.e. stock macOS bash works).
 - **`jq`** — parses the hook-input/emits JSON. **Missing `jq` ⇒ the hook no-ops** (guarded by
   `command -v jq >/dev/null 2>&1 || exit 0`). Install it to get enforcement; nothing breaks without it.
+- **`python3`** — the `dispatch-gate/` engine only. Unlike the `jq`-guarded hooks it does **not**
+  silently no-op when missing: the shim emits a loud did-not-run notice and allows — a gate that
+  didn't run must never look like a gate that passed.
 - **`git`**, **`stat`** — the router uses GNU `stat -c %Y` with a BSD `stat -f %m` fallback, so it
   works on Linux, macOS/BSD, and WSL. All regexes use POSIX character classes only (no GNU-only
   `\b`/`\s`), so the safety gate behaves identically under GNU and BSD grep/sed.

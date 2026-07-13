@@ -111,6 +111,45 @@ config, so we **deep-merge** and validate.
 4. **Validate** the merged JSON parses before writing. **Diff + yes.** Then write.
 5. **Manifest** records `action: merge`, the backup path, and the post-merge `sha256`.
 
+### The `dispatch-gate` hook — two surfaces, DISTINCT commands
+
+The dispatch-conformance gate (`.claude/hooks/dispatch-gate/`) wires **two** `PreToolUse` entries — one per
+dispatch surface — appended to the `PreToolUse` array beside the existing `Bash` safety-gate entry:
+
+```jsonc
+"PreToolUse": [
+  // existing: { "matcher": "Bash", ... pretooluse-safety-gates.sh }
+  { "matcher": "Agent",
+    "hooks": [{ "type": "command",
+      "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/dispatch-gate/dispatch-gate.sh agent" }] },
+  { "matcher": "Workflow",
+    "hooks": [{ "type": "command",
+      "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/dispatch-gate/dispatch-gate.sh workflow" }] }
+]
+```
+
+- **The two commands MUST differ (`… agent` vs `… workflow`).** `merge-tool.py`'s `apply_hooks` dedups
+  `hooks.<Event>[]` on the exact **command-string set**, **matcher-blind** (`if cmds and cmds <= existing:
+  continue` — verified at `concierge/merge-tool.py:189`). Two blocks sharing one command string would
+  collapse to one on merge and **silently drop a surface**; the surface argument makes each block a distinct
+  row, so both survive and a re-run stays idempotent. Do **not** collapse them into a single
+  `"Agent|Workflow"` matcher — the two surfaces need distinct commands to co-exist under the dedup, and the
+  shim reads the surface from `$1`.
+- **Allowlist union.** Add `Bash(${CLAUDE_PROJECT_DIR}/.claude/hooks/dispatch-gate/dispatch-gate.sh:*)` to
+  `permissions.allow[]` (set-union, dedup — §2 step 3) so a sub-agent inheriting the allowlist runs the gate
+  without a prompt. The kit only ever adds to `allow`.
+- **Manifest rows.** The gate directory's files get canonical `action: create` rows; the settings merge is
+  the usual `action: merge` + backup + post-merge `sha256` (§4).
+
+**Adopter upgrade note.** On `/kit-upgrade`, the two matcher blocks are **new-in-version** entries appended
+to the adopter's `PreToolUse` array — the append/union/dedup preserves every hook they added around them
+(e.g. an agent-comms `PreToolUse` block), and re-validates the merged JSON before writing. The gate is
+**brownfield-inert**: it lands **silent** on every existing dispatch and switches on only when an author
+declares a governed dispatch (a `contract: 'v1'` pin in a Workflow's `meta`, or a `<!-- fieldbook:dispatch
+-->` block in an Agent prompt), so no repo retro-fails on work in flight. One enterprise caveat to surface
+in `verify-install.md`: if the org sets `allowManagedHooksOnly`, project-tier hooks do not fire and the gate
+is a silent no-op — the post-install smoke test must dry-fire it and fail loud if it did not run.
+
 ---
 
 ## 3 · Skill / hook name collisions → namespace or ask

@@ -2,6 +2,52 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.6.0 — 2026-07-13 (the fail-loud era)
+
+The **fail-loud dispatch contract** becomes both doctrine and mechanism. Born from a fleet
+operator directive after a real incident (a fan-out silently dropped half its legs and the
+synthesis LOOKED complete), designed spec-first with a three-lens adversarial review (1 BLOCKER
++ 10 MAJORs, all dispositioned) and grounded by a firsthand three-probe hook spike before any
+enforcement code was written.
+
+- **`reference/fail-loud-dispatch-contract.md`** — the contract (R1–R6), the single normative
+  home: completeness asserted at every phase boundary; the silent-drop idioms banned
+  (`.filter(Boolean)`-and-continue on dependent paths, early-return partials, vacuous
+  `every()` verdicts); two sanctioned shortfall paths (halt-and-repair via resume ·
+  declared-degraded with a failure manifest); COMPLETED ≠ COMPLETE in both directions;
+  launch pre-flight; lower-bound honesty. `standing-rules-core` carries a two-sentence
+  pointer, never a restatement.
+- **`hooks/dispatch-gate/`** (Standard+): a PreToolUse gate over BOTH dispatch surfaces —
+  sub-agent dispatches and dynamic workflows — via two matcher blocks with deliberately
+  DISTINCT commands (the settings-merge dedup is matcher-blind; identical commands would
+  silently drop a surface). Graded model-pin check (WARN undeclared / FAIL declared — never
+  a brownfield retro-block); canonicalised hash check on the paste-in **fail-loud preamble**
+  (`assertComplete` · a self-consistent `manifestDiff` whose `{expected, received, missing}`
+  triple agrees with its coverage verdict on BOTH paths · `vacuityGuard` — an empty verifier
+  set resolves UNVERIFIED, never confirmed · an auto-asserting `fanout`); the declaration
+  lane in RETURN-LOCUS form (the gate confirms the sanctioned call in return position and
+  reads the returned coverage field — it never greps a file body for verdict words); a
+  hardened, audited escape hatch (no blanket scope, enumerated check-ids, resolvable
+  artifact reference, append-only audit log); fail-OPEN-with-loud-WARN on any unknown
+  payload shape (the dispatch tool's hook payload is upstream-undocumented — a gate that
+  did not run must never look like a gate that passed); red/green fixtures + a
+  known-positive self-test that MUST fire.
+- **`scripts/doc-refs.sh` ships** — the docs-impact gate's mechanical gatherer (spec-first
+  since 0.5.0, contract unchanged): five-state triage rows, fenced baseline/retirement
+  lanes, canary-backed emptiness, loud internal-failure semantics (a tool error can never
+  read as "no drift"), plus its known-positive fixture test. The CLEAR stage upgrades from
+  recorded-manual-read to canary-backed proof.
+- **Lint:** rule 18 gains filename-keyed charter detection (an `FR-NNNN` charter file can no
+  longer early-return the detector — the silent-vacuity hole); NEW rule 19 enforces the
+  baseline seal (sealed drift-inventory entries cannot be edited or laundered; not
+  adopt-exempt, rule-17 class).
+- **Field-nominated riders** (v0.5.0 convergence, credited generically): the overlay-resolution
+  upgrade rule (a multi-tier file 3-ways against the highest tier ≤ the installed profile);
+  the template-vs-instance line (amendments never auto-propagate; hand-apply is sanctioned);
+  adopter-resolvable `related:` refs on the two docs-impact reference docs; the
+  SOURCE-FIDELITY install rule (installs extract from the pinned ref, never a working tree);
+  research-tier wording (runs at Standard too, both index copies, harmonized).
+
 ## 0.5.0 — 2026-07-11 (the docs-impact era)
 
 The **docs-impact gate** (framework-rationale/0014) — the work discipline learns to ask

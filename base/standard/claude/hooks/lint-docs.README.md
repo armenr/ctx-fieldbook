@@ -11,8 +11,8 @@ related: [lint-docs]
 This is the **enforcement** that the `.agent-docs/CONVENTIONS.md` *"Lint rules"* section refers to.
 CONVENTIONS ships those rules as a spec and is honest that only *index completeness* was ever
 hook-enforced; the rest were advisory. `lint-docs.py` makes **all fifteen** real — each a discrete
-check with a `PASS` / `FAIL` (or `WARN`) verdict and a `file:line` message — and adds three **kit-local**
-checks (16, 17, 18) the spec does not enumerate.
+check with a `PASS` / `FAIL` (or `WARN`) verdict and a `file:line` message — and adds four **kit-local**
+checks (16, 17, 18, 19) the spec does not enumerate.
 
 Language-agnostic and dependency-free by design: **stock Python 3, standard library only** (no
 `pip install`, no `import yaml` — front-matter is hand-parsed). It runs the same on Linux, macOS/BSD,
@@ -38,7 +38,7 @@ error (bad `--root`, bad `--now`). **Warnings never change the exit code.** Outp
 
 ## The checks (rule → CONVENTIONS mapping)
 
-Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* section; **16–18 are kit-local**
+Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* section; **16–19 are kit-local**
 (marked as such in the last column).
 
 | # | Check | Class | CONVENTIONS ref |
@@ -60,7 +60,8 @@ Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* secti
 | 15 | `work-unit:` resolves to a WU in `now/work-plan.md` | FAIL | Lint rule 15 · §4 |
 | 16 | Advisory: ADR filenames carrying a redundant `ADR-` prefix (canonical is `NNNN-slug.md`) | **WARN** | kit-local advisory (not a CONVENTIONS rule) |
 | 17 | **Obligations receivable integrity** — every `## Owed to me` data row in `now/obligations.md` names a trigger **and** a canonical default-if-silent | FAIL | kit-local (obligations ledger; silent when the file is absent) |
-| 18 | **Charter design-review gate** — a `full` risk-tier dispatch-charter whose `status` has left drafting must carry a resolved `REV-NNN` `design-rev` | FAIL | kit-local (dispatch-charters; silent when a charter carries no `risk-tier`) |
+| 18 | **Charter design-review gate** — a `full` risk-tier dispatch-charter whose `status` has left drafting must carry a resolved `REV-NNN` `design-rev`; a charter is recognized by `charter-id` **or** a filename-keyed `FR-NNNN-slug.md` under `dispatch-charters/` | FAIL | kit-local (dispatch-charters; silent when a charter carries no `risk-tier`) |
+| 19 | **Baseline-integrity** — a present docs-impact baseline (`reference/docs-baseline.md`) must carry a recorded seal and no parked row's `inventory-date` may post-date it | FAIL | kit-local (docs-impact seal; silent when the ledger is absent; **not** adopt-exempt) |
 
 ### Notes on specific rules
 
@@ -140,11 +141,31 @@ Rules 1–15 map 1:1 to a numbered entry in the CONVENTIONS *"Lint rules"* secti
   (turn-control, shared-write state, contracts, irreversible surfaces) earns before it leaves drafting.
   A **standard**-tier charter carries no such gate. **Brownfield-safe:** a charter with **no `risk-tier`
   field at all** passes **silently** (the same absent-artifact precedent as rule 17), so an adopter's
-  pre-kit charters never retro-fail — and because the gate turns on a field, not a filename, it is inert
-  on the whole corpus until a team opts a charter in. A `risk-tier` present but outside `{standard, full}`,
+  pre-kit charters never retro-fail. A `risk-tier` present but outside `{standard, full}`,
   or any charter whose front-matter the rule cannot make sense of, degrades to **one `WARN`** naming the
   file — never a traceback. Kit-shipped charter scaffolding (`templates/`, `.template.md`,
   `provenance: kit-template`) is skipped, so a seed's placeholder `design-rev` is never a live violation.
+  **Charter detection is `charter-id` OR filename-keyed.** A charter is recognized by a `charter-id`
+  front-matter field (canonical) **or** by an `FR-NNNN-slug.md` filename directly under a
+  `dispatch-charters/` (or `dispatch/`) dir — the same *recognize-not-canonize* move rule 16 makes for
+  `ADR-NNNN` filenames. Without the filename branch a filename-keyed charter (identity in the filename, no
+  `charter-id`) early-returned the detector and the whole gate silently no-op'd on it — a silent-vacuity
+  hole. The long-term mission `charter.md` matches neither (no `charter-id`, wrong filename shape) and is
+  never a target.
+- **Rule 19 (baseline-integrity) enforces the docs-impact SEAL contract statically.** The docs-impact
+  baseline (`reference/docs-baseline.md`, `baseline-mechanism.md` §"Anti-laundering") parks inherited
+  drift so a diff-scoped gate does not drown a brownfield adopter — and "new debt loud" rests on that
+  baseline being **sealed and write-once**, never a laundry where a just-broken claim is re-labelled
+  "inherited." When the ledger exists this rule requires a recorded **seal** (`baseline-sealed-at` in
+  `.kit-manifest.json` **or** the ledger header) and that **no parked row's `inventory-date` post-dates
+  the seal** (a post-seal row is a suspected launder — only the sealed one-shot inventory writes rows).
+  An unsealed ledger, a seal without a parseable date, or a row with no parseable `inventory-date` are each
+  a `FAIL`. It keys on the runtime **file** — **silent** when the ledger is absent (a cold-start /
+  no-baseline repo, the rule-17 absent-artifact precedent) — and, like rule 17, is **not adopt-exempt**:
+  it guards the accountability line, not a schema convenience, so it fires regardless of any manifest
+  `action: adopt` row. The git-history half ("a row's claim was *edited* after the seal") needs a diff and
+  is the `doc-refs` sweep's job; this rule covers the statically-checkable invariants. A ledger the parser
+  cannot make sense of degrades to **one `WARN`** naming the file — never a traceback.
 - **Adopt-exemption (retro-adopted corpus).** Docs recorded `action: adopt` in
   `.agent-docs/.kit-manifest.json` predate the kit and carry no kit front-matter, so the schema-class
   rules (1, 2, 3, 4, 5, 6, 10, 12) **plus rule 14 (checkpoint integrity)** are skipped for those paths;
@@ -235,4 +256,19 @@ python3 lint-docs.py --root ../../agent-docs
 # A broken ADR (bad provenance, no Alternatives, dangling related:) fails with three grouped FAILs.
 python3 lint-docs.py --root /path/to/fixture/bad   # exit 1
 python3 lint-docs.py --root /path/to/fixture/good  # exit 0
+```
+
+Rule-specific red/green fixtures (each proves the check is non-vacuous — plant → FAIL → remove):
+
+```sh
+# Rule 18 (filename-keyed charter). RED: dispatch-charters/FR-0007-x.md with `risk-tier: full`,
+#   `status: accepted`, and NO `charter-id`, NO `design-rev` → FAIL 18 (the detector no longer
+#   early-returns on the absent charter-id). GREEN: add `design-rev: REV-001` (resolving), OR drop
+#   `risk-tier` (brownfield silent pass), OR keep `status: drafting` (gate not yet biting) → clean.
+
+# Rule 19 (baseline-integrity). RED: reference/docs-baseline.md whose manifest records
+#   `baseline-sealed-at: 2026-07-01` but which carries a parked row dated `2026-07-12` → FAIL 19
+#   (post-seal row = suspected launder). Also RED: the same ledger with NO recorded seal → FAIL 19
+#   (unsealed). GREEN: seal present + every parked row dated on/before the seal → clean; and with the
+#   ledger absent entirely the rule is silent (cold-start).
 ```

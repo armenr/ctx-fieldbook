@@ -89,17 +89,17 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 | `reference/index.md` | `reference/index.md` | seed stub; root `index.md` routes to `reference/` at Standard |
 | `reference/doc-refs-contract.md` | `reference/doc-refs-contract.md` | kit-template (front-matter lint-clean) — the diff-keyed doc-refs sweep spec (framework-rationale/0014-docs-impact-gate.md); add its `reference/index.md` row in the SAME change (rule 13) |
 | `reference/baseline-mechanism.md` | `reference/baseline-mechanism.md` | kit-template — the brownfield-vs-cold-start baseline design (framework-rationale/0014-docs-impact-gate.md); add its `reference/index.md` row same-change |
+| `reference/fail-loud-dispatch-contract.md` | `reference/fail-loud-dispatch-contract.md` | kit-template — the fail-loud dispatch contract (R1–R6) the `dispatch-gate` hook enforces; the SINGLE normative home (standing-rules carries only a pointer); add its `reference/index.md` row same-change (rule 13) |
 | `reviews/index.md` | `reviews/index.md` | verbatim — the typed `REV-NNN` review-report ledger seed (0.2.0); root `index.md` routes to `reviews/` at Standard |
 | `templates/review-template.md` | `templates/review-template.md` | verbatim — one `REV-NNN` report per review pass; **its `templates/index.md` catalog row must ship** (see scaffold-plan §1.2 note) |
 | `now/obligations.template.md` | `now/obligations.md` | **conditional on the manifest `multi_party` install-decision** (ADR-0012, C1/C5): instantiate ONLY when `multi_party` is true — fill `{{PROJECT_NAME}}`, drop `.template`, add the `now/index.md` routing row same-change. When `multi_party` is false, SKIP this file — the same content seeds as an `## Obligations` section inside `now/handoff.md` (the `/handoff` skill delta), not as a standalone file. `multi_party` is a manifest decision flag, **not** a `{{…}}` token — `parameters.md`'s twelve stay twelve. |
 
-> **The docs-impact sweep is spec-first (framework-rationale/0014-docs-impact-gate.md).** The
-> ratified *contract* ships now — `reference/doc-refs-contract.md` + `reference/baseline-mechanism.md`
-> (the two reference rows above). The mechanical gatherer `scripts/doc-refs.sh` — the diff-keyed twin
-> of `scripts/wu-refs.sh` — is a **later build** gated on that design, so **no `scripts/doc-refs.sh`
-> copies into the target in this build**. Until it lands, the docs-impact CLEAR stage runs on a
-> recorded MANUAL corpus read ("sweep not installed → surfaces read → verdict"), self-upgrading to
-> canary-backed proof when the script ships.
+> **The docs-impact sweep ships complete as of 0.6.0 (framework-rationale/0014-docs-impact-gate.md).**
+> The ratified *contract* — `reference/doc-refs-contract.md` + `reference/baseline-mechanism.md` (the
+> two reference rows above) — AND its mechanical gatherer **`scripts/doc-refs.sh`** (the diff-keyed
+> twin of `scripts/wu-refs.sh`; COPY-VERBATIM per scaffold-plan Phase 2.1b, Standard+) now install
+> together. The docs-impact CLEAR stage runs canary-backed on the script's five-state output; the
+> recorded-manual-read form remains the sanctioned fallback only where the script cannot run.
 
 ### `.claude/` (from `base/standard/claude/`)
 | Kit source | Installs to | Note |
@@ -111,6 +111,7 @@ Everything in Minimal **plus** the `base/standard/` payload + the assembled safe
 | `hooks/install-hooks.sh` | `hooks/install-hooks.sh` | verbatim (wires `core.hooksPath`) |
 | `hooks/subagentstart-prefix.sh` | `hooks/subagentstart-prefix.sh` | token-fill (`{{PROJECT_NAME}}`) |
 | `hooks/README.md` | `hooks/README.md` | verbatim |
+| `hooks/dispatch-gate/` (gate + shim + `preamble.js` + `make-preamble.sh` + `self-test.py` + README + `fixtures/**`) | `hooks/dispatch-gate/` | **verbatim** (token-free, stdlib-only python3; brownfield-inert — WARN-only until a dispatch declares governance). Wires TWO `PreToolUse` blocks with DISTINCT commands (`… agent` / `… workflow`) + one allowlist entry — exact JSON in `merge-strategy.md` §2 |
 | `hooks/pretooluse-safety-gates.base.sh` | (not copied directly) | **base for assembly** → see below |
 | `skills/sitrep/SKILL.md` | `skills/sitrep/SKILL.md` | token-fill |
 | `skills/debrief/SKILL.md` | `skills/debrief/SKILL.md` | token-fill (`{{PRIMARY_LANGUAGE}}`, `{{CODE_INTEL_TOOL}}`) |
