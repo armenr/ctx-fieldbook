@@ -120,6 +120,33 @@ After any edit to `preamble.js`, run `make-preamble.sh` (rewrites the header) an
 in `dispatch-gate.py`. `dispatch-gate.py --self-check` (run by the self-test) FAILS LOUD if the two drift,
 so the pin can never silently rot.
 
+## The protocol token (configurable)
+
+The kit-name is a **functional protocol token**: it labels the preamble header/END block, the
+`<token>:dispatch` / `<token>:degraded` annotation markers an author types, and the `<TOKEN>_GATE_CWD` env
+var. A leak-gated public adopter who cannot carry the kit name byte-for-byte can **rename it in one place**
+instead of hand-forking the gate:
+
+- **Constant** — `DEFAULT_PROTOCOL_TOKEN` at the top of `dispatch-gate.py`.
+- **Env override** — `DISPATCH_GATE_TOKEN`. **Precedence:** the env var wins when set and non-empty;
+  otherwise the constant. The **default is exactly the shipped token**, so every existing install is
+  byte-for-byte unaffected and the numbered-check behaviour is identical.
+
+Two properties make the rename safe:
+
+- **The pinned hash is token-invariant.** The token lives *only* in the preamble's header + END marker
+  **lines**, which are **excluded** from the canonicalised body hash (the hash covers the body strictly
+  *between* those lines). Renaming the token cannot change the body hash, so `PINNED_PREAMBLES` stays valid.
+- **`preamble.js` derives from the same source.** `make-preamble.sh` (→ `dispatch-gate.py --make-preamble`)
+  stamps the *configured* token label into the header + END lines and refreshes the hash. Under the default
+  token this is a **no-op** (the shipped `preamble.js` is untouched); under an override it re-labels
+  `preamble.js` to match. Detection is token-**agnostic** (`\S+ DISPATCH PREAMBLE …`), so `--self-check` /
+  `--make-preamble` / `--hash-preamble` keep working on a `preamble.js` carrying any label — while the
+  `<token>:dispatch` / `<token>:degraded` opt-in markers match the **configured** token exactly.
+
+The `fieldbook:*` markers shown elsewhere in this README are the **default** token. `self-test.py`
+re-tokenises the fixtures to the active token, so it passes under both the default and an env override.
+
 ## Self-test (test your safety tool — C4)
 
 ```sh

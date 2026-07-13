@@ -135,6 +135,11 @@ dispatch surface — appended to the `PreToolUse` array beside the existing `Bas
   row, so both survive and a re-run stays idempotent. Do **not** collapse them into a single
   `"Agent|Workflow"` matcher — the two surfaces need distinct commands to co-exist under the dedup, and the
   shim reads the surface from `$1`.
+- **Wire by TARGETED TEXT INSERT, never a JSON round-trip.** Splice the two blocks into the `PreToolUse`
+  array by matching the surrounding compact style — never `json.load` → mutate → `json.dump` the whole
+  file. A full-file round-trip was measured at a 135-line reformat where the targeted insert is ~3 lines;
+  a settings history the friend can actually review depends on the diff touching only the lines that
+  changed, not re-emitting every key (`merge-tool.py` is the write primitive that does exactly this).
 - **Allowlist union.** Add `Bash(${CLAUDE_PROJECT_DIR}/.claude/hooks/dispatch-gate/dispatch-gate.sh:*)` to
   `permissions.allow[]` (set-union, dedup — §2 step 3) so a sub-agent inheriting the allowlist runs the gate
   without a prompt. The kit only ever adds to `allow`.

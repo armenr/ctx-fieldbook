@@ -17,9 +17,19 @@
 # cross-dir references use relative paths (`../dir/file.md`) and are ignored here (targets
 # containing '/' are skipped). Presence-only by design.
 #
+# Entry-detection anchoring (two guards against over-counting a filename that is merely NAMED, not indexed):
+#   1. HTML comment blocks are stripped in a pre-pass — an index seed ships an `<!-- EXAMPLE ... -->` block
+#      whose illustrative `<name>.md` rows name files that do not exist yet; counting them fabricated a
+#      PHANTOM that blocked --strict on a fresh install. A commented-out row is not a live entry.
+#   2. A token counts ONLY on an ENTRY ROW — a list-marker row (`- `file.md` …`, optionally after an emoji
+#      marker) or a ledger-table row (`| `file.md` | …`). A bare backtick token in a prose paragraph or an
+#      entry's indented continuation line (`  **Open when:** … `foo.md``) is NOT an entry. Without this a
+#      filename mentioned in prose was miscounted as an index entry (a spurious phantom / unindexed split).
+#
 # Modes: default = warn (always exit 0; one line per drifting dir, silent when clean).
 #        --strict = exit 1 if any drift (CI / gate use).
-# Deps: bash 3.2+, find, sort, comm, grep, sed. No jq, no GNU-isms.
+# Deps: bash 3.2+, find, sort, comm, grep, sed, awk. No jq, no GNU-isms (awk is POSIX; used for the
+#       multi-line comment-span strip, which pure sed cannot do without deleting inline-commented entries).
 set -u
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -48,6 +58,28 @@ managed_dirs() {
   done
 }
 
+# strip_html_comments FILE — blank out `<!-- ... -->` spans (possibly multi-line) while PRESERVING line
+# structure, so a commented-out EXAMPLE row never counts AND an inline comment on a real entry line does not
+# take the whole entry with it (a plain `sed '/<!--/,/-->/d'` range-delete would). POSIX awk; state carries
+# across lines so a comment that opens on one line and closes on another is fully spanned.
+strip_html_comments() {
+  awk '
+    { line = $0; out = ""
+      while (1) {
+        if (incomment) {
+          p = index(line, "-->")
+          if (p == 0) { line = ""; break }        # still inside the comment — blank the rest of the line
+          line = substr(line, p + 3); incomment = 0
+        }
+        p = index(line, "<!--")
+        if (p == 0) { out = out line; break }      # no opener left — keep the remaining text verbatim
+        out = out substr(line, 1, p - 1)           # keep text before the opener
+        line = substr(line, p + 4); incomment = 1
+      }
+      print out
+    }' "$1"
+}
+
 DRIFT=0
 for dir in $(managed_dirs); do
   rel="${dir#"$DOCS"/}"
@@ -59,8 +91,10 @@ for dir in $(managed_dirs); do
     continue
   fi
   disk=$(find "$dir" -maxdepth 1 -name '*.md' ! -name 'index.md' -exec basename {} \; | sort -u)
-  # match both bare backtick tokens `file.md` AND ledger-table markdown links [label](file.md)
-  indexed=$( { grep -oE '`[^`/]*\.md`' "$idx" | tr -d '`'; grep -oE '\]\([^)/]*\.md\)' "$idx" | sed -E 's/^\]\(//; s/\)$//'; } 2>/dev/null | grep -v '^index\.md$' | sort -u)
+  # Strip HTML comment spans, then keep ONLY entry rows (a `- ` list marker or a `|` ledger-table row);
+  # from those, match bare backtick tokens `file.md` AND ledger-table markdown links [label](file.md).
+  entry_rows=$(strip_html_comments "$idx" | grep -E '^[[:space:]]*(-[[:space:]]|\|)')
+  indexed=$( { printf '%s\n' "$entry_rows" | grep -oE '`[^`/]*\.md`' | tr -d '`'; printf '%s\n' "$entry_rows" | grep -oE '\]\([^)/]*\.md\)' | sed -E 's/^\]\(//; s/\)$//'; } 2>/dev/null | grep -v '^index\.md$' | sort -u)
   unindexed=$(comm -23 <(echo "$disk") <(echo "$indexed") | grep -c . || true)
   phantom=$(comm -13 <(echo "$disk") <(echo "$indexed") | grep -c . || true)
   if [ "$unindexed" -gt 0 ] || [ "$phantom" -gt 0 ]; then

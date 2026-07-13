@@ -2,6 +2,39 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.6.1 — 2026-07-14 (the convergence-findings batch)
+
+Seven field-nominated riders from the v0.6.0 convergence round — every one credited to the
+field repo that found it, every fix red/green-proven before ship.
+
+- **Entry-detector two-half fix** (2 sightings): the index-completeness check lived in TWO
+  engines with complementary halves of the same bug — the shell lint stripped no HTML
+  comments and anchored no rows; the python rule 13 stripped comments but matched bare
+  backtick filenames in prose. Both engines now strip comment spans in a pre-pass AND
+  anchor entry detection on the leading list-marker/table-row shape; real phantoms (an
+  entry row pointing at a missing file) still fail. Proven against the kit's own shipped
+  index, which the old shell lint falsely blocked.
+- **Configurable gate protocol token**: `DISPATCH_GATE_TOKEN` env (or the top-of-file
+  default constant) now governs the dispatch marker, degrade marker, and the derived
+  `<TOKEN>_GATE_CWD` var — leak-gated public adopters configure instead of hand-forking.
+  Default byte-identical; the preamble body hash is token-independent; self-test passes
+  under the default and an overridden token.
+- **Interrupt triage** (new standing-rules section): inbound mail is a doorbell, not a
+  detour — four rungs: answer-inline / dispatch-and-return / ask-don't-block-and-file /
+  file-durable; unsure → file plus the one-line ask. Work-unit INTAKE miniaturized for
+  interrupts. Plus the **one-voice fence** now defined in the dispatch contract (a
+  dispatched agent never speaks on a shared channel under the repo's name).
+- **Review doctrine — independent panels can share a blind spot**: ladder rung 4 extended
+  (a green N-lens review is a distinct confidence layer, never a substitute for the
+  orchestrator's firsthand read of the load-bearing diff); adversarial-separation gains
+  failure-mode-diverse lenses, boundary-probing a converged mechanism model, and the
+  dead-field tell (a write-only field is a symptom — trace before deleting).
+- **Upgrade/merge guidance**: manifest source-field drift — the profile-keyed overlay rule
+  is the AUTHORITY over a row's recorded source tier, and the upgrade corrects the record
+  on discovery; diverged grafts MUST collapse to pointer form (faithful grafts may choose);
+  settings hook blocks are wired by targeted text insert, never a whole-file json
+  round-trip (a 135-line reformat was measured where 3 lines suffice).
+
 ## 0.6.0 — 2026-07-13 (the fail-loud era)
 
 The **fail-loud dispatch contract** becomes both doctrine and mechanism. Born from a fleet

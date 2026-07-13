@@ -625,6 +625,14 @@ INDEX_LINK_RE = re.compile(r"\]\(([^)/]*\.md)\)")
 # whose illustrative `<name>.md` tokens name files that don't exist yet — counting them would flag a
 # phantom entry on a fresh install. A commented-out row is not a live index entry.
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+# A token counts ONLY on an ENTRY ROW — a list-marker row (`- `file.md` …`, optionally after an emoji
+# marker) or a ledger-table row (`| `file.md` | …`). A bare backtick token in a prose paragraph or an
+# entry's indented continuation line (`  **Open when:** … `foo.md``) is NOT an index entry. Anchoring on
+# the row shape (paired with the HTML-comment strip above) is the second half of the entry-detector fix:
+# without it a filename merely NAMED in prose was miscounted as an entry (a spurious phantom / unindexed
+# split). Only `- ` (dash + space) and `|` open an entry row — never `*`/`+`, so a `**Open when:**`
+# continuation line is never mistaken for a bullet.
+INDEX_ENTRY_ROW_RE = re.compile(r"^[ \t]*(?:-[ \t]|\|)")
 
 
 def content_docs(dirpath):
@@ -694,8 +702,13 @@ def check_index_completeness(root, findings):
             findings.append(Finding(13, FAIL, rel(idx, root), 1, "cannot read index.md: %s" % exc))
             continue
         scan = HTML_COMMENT_RE.sub("", itext)  # drop commented-out example rows before counting
-        indexed = set(t for t in INDEX_TOKEN_RE.findall(scan) + INDEX_LINK_RE.findall(scan)
-                      if t != "index.md")
+        indexed = set()
+        for line in scan.split("\n"):
+            if not INDEX_ENTRY_ROW_RE.match(line):
+                continue  # prose / continuation / heading — a named filename here is not an index entry
+            for t in INDEX_TOKEN_RE.findall(line) + INDEX_LINK_RE.findall(line):
+                if t != "index.md":
+                    indexed.add(t)
         unindexed = sorted(disk - indexed)
         phantom = sorted(indexed - disk)
         if unindexed:

@@ -261,6 +261,19 @@ python3 lint-docs.py --root /path/to/fixture/good  # exit 0
 Rule-specific red/green fixtures (each proves the check is non-vacuous — plant → FAIL → remove):
 
 ```sh
+# Rule 13 (index completeness — entry-detector anchoring). A token counts as an index entry ONLY on an
+#   ENTRY ROW: a `- ` list-marker row (optionally after an emoji marker, e.g. `- 🔍 `foo.md``) or a `|`
+#   ledger-table row (`| `foo.md` | … |`) — never a bare backtick token in prose, an indented
+#   `**Open when:**` continuation line, or inside an `<!-- … -->` HTML comment block (both are stripped /
+#   skipped BEFORE counting). RED-a: a populated dir whose index.md carries a kit-shipped
+#   `<!-- EXAMPLE … `architecture-overview.md` … -->` block → that commented row is counted as a PHANTOM
+#   (in index, no such file) and --strict fails. RED-b: the same index names `notes.md` in a prose
+#   sentence, or `orphan.md` in an `**Open when:**` continuation line → each is miscounted as a phantom.
+#   GREEN: strip the comment span + anchor on the row shape → only the real `- `x.md`` / `| `x.md` |`
+#   rows count → clean. NEGATIVE control (proves non-vacuity): a real doc on disk NOT named on any entry
+#   row is still flagged UNINDEXED, and a real `- `gone.md`` entry row with no file on disk is still
+#   flagged PHANTOM. (Same two-guard logic in the standalone lint-agent-docs-indexes.sh --strict lane.)
+
 # Rule 18 (filename-keyed charter). RED: dispatch-charters/FR-0007-x.md with `risk-tier: full`,
 #   `status: accepted`, and NO `charter-id`, NO `design-rev` → FAIL 18 (the detector no longer
 #   early-returns on the absent charter-id). GREEN: add `design-rev: REV-001` (resolving), OR drop

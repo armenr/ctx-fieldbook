@@ -117,7 +117,12 @@ the Standard source. Resolve `THEIRS` from the overlay matching the manifest `pr
 `base/standard/`.** 3-waying a Full-layered dest against the Standard-tier source would show the Standard
 copy as "theirs" and fast-forward the installed index DOWN a tier, dropping the Full-only rows (e.g. the
 `work-discipline.md` routing row) and regressing rule 13. Resolve the tier deliberately from the profile;
-never let one tier's overlay clobber the other's layered copy.
+never let one tier's overlay clobber the other's layered copy. And the recorded `source` field is NOT the
+authority here: a row's recorded `source` tier can DRIFT from the tier its on-disk content actually tracks
+(a hand-layered install, an earlier upgrade that resolved the tier wrong). When they disagree the
+profile-keyed overlay rule above WINS over the recorded `source` — and on discovering the drift the upgrade
+CORRECTS the recorded `source` in the SAME change, so the next upgrade 3-ways against a true base (the
+first live test caught exactly this).
 
 **A template amendment never auto-propagates to a living instance.** The kit owns the TEMPLATE
 (`templates/*.template.md`, `now/*.template.md`); the INSTANCE the colleague instantiated from it — a
@@ -288,6 +293,14 @@ applies unchanged).
 - **Content, not shape.** Where the kit split a doc (core + rationale, core + addendum) and the tree
   deliberately keeps a monolith, adopt the CONTENT into the local structure (MERGE) — the file split
   is kit packaging, not doctrine; do not require it.
+- **A DIVERGED graft MUST collapse to pointer form.** When the tree carries a local RESTATEMENT of
+  kit-canonical text (a rule it grafted into its own standing-rules before the kit had a single
+  normative home for it), reconcile by fidelity: a FAITHFUL graft — byte-current with the canonical
+  wording — MAY keep-both or collapse to a pointer by taste; a DIVERGED graft — an older or edited
+  restatement — MUST collapse to pointer form. Keeping a diverged restatement preserves a second,
+  divergent statement of the norm — the exact hazard the single-normative-home rule exists to prevent
+  (`.agent-docs/reference/fail-loud-dispatch-contract.md` §Enforcement seam: a graft de-dupes down to
+  a pointer at its one source).
 - **Provenance guard.** Adopted kit docs never import the KIT's lifecycle state into local records:
   a kit doc's `status:` (or its upstreamed twin's) does not change the status of the adopter's own
   ADRs/OQs — local decision lifecycle is owned locally.

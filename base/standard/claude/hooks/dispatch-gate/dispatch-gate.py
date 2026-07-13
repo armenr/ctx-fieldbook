@@ -61,6 +61,33 @@ FAIL = "FAIL"
 WARN = "WARN"
 
 # ---------------------------------------------------------------------------------------------------
+# Configurable protocol token (the kit-name marker). ONE place to rename the kit-name that appears as a
+# FUNCTIONAL protocol token in three spots: the preamble header/END marker LABEL, the `<token>:dispatch` /
+# `<token>:degraded` annotation markers an author types, and the `<TOKEN>_GATE_CWD` env var. A leak-gated
+# public adopter who cannot carry the kit name byte-for-byte renames it here (or via the env override)
+# instead of hand-forking the whole gate.
+#
+# Precedence (documented): the DISPATCH_GATE_TOKEN environment variable wins when set and non-empty;
+# otherwise DEFAULT_PROTOCOL_TOKEN below. The DEFAULT is EXACTLY the shipped token, so every existing
+# install is byte-for-byte unaffected and the numbered-check behaviour is identical.
+#
+# HASH-INVARIANCE (verified property): the token appears ONLY in the preamble's HEADER and END marker
+# LINES. canonical_body_hash() hashes the body STRICTLY BETWEEN those two lines (see extract_preamble ->
+# body = lines[header+1 : end]), so the header/END lines — and therefore the token — are EXCLUDED from the
+# hashed body. Renaming the token cannot change the pinned canonical body hash; PINNED_PREAMBLES stays
+# valid across a rename. (The preamble block is also located token-AGNOSTICALLY below, so --self-check /
+# --make-preamble / --hash-preamble keep working on a preamble.js carrying any token label.)
+DEFAULT_PROTOCOL_TOKEN = "fieldbook"
+PROTOCOL_TOKEN = (os.environ.get("DISPATCH_GATE_TOKEN") or DEFAULT_PROTOCOL_TOKEN).strip() \
+    or DEFAULT_PROTOCOL_TOKEN
+_TOKEN_LOWER = PROTOCOL_TOKEN.lower()
+_TOKEN_UPPER = PROTOCOL_TOKEN.upper()
+GATE_CWD_ENV = _TOKEN_UPPER + "_GATE_CWD"            # e.g. FIELDBOOK_GATE_CWD (cwd fallback for the gate)
+PREAMBLE_MARKER = _TOKEN_UPPER + " DISPATCH PREAMBLE"  # the label the header/END lines carry + make-preamble stamps
+DISPATCH_ANNOTATION = _TOKEN_LOWER + ":dispatch"      # the Agent opt-in marker: <!-- <token>:dispatch ... -->
+DEGRADED_ANNOTATION = _TOKEN_LOWER + ":degraded"      # the escape-hatch marker: <token>:degraded
+
+# ---------------------------------------------------------------------------------------------------
 # Preamble version/hash pin (currency table). Each entry is version -> canonical body hash. The shipped
 # preamble.js header declares the SAME hash for its version; the gate cross-checks both directions:
 #   * self-consistency — the header's declared hash == the recomputed canonical hash of its own body
@@ -76,12 +103,17 @@ PINNED_PREAMBLES = {
 PREAMBLE_CURRENT_VERSION = "1.0.0"
 
 # Marker lines. The header line (which carries the sha256) is NOT part of the hashed body — there is no
-# self-reference. The body is everything strictly between the header line and the END line.
+# self-reference. The body is everything strictly between the header line and the END line. The block is
+# located TOKEN-AGNOSTICALLY (`\S+ DISPATCH PREAMBLE …`) so a rename of the protocol-token label never
+# blinds detection — the fail-loud primitives are hash-verified regardless of the header's label, and the
+# utility modes (--self-check / --make-preamble / --hash-preamble) keep working on any-token preamble.js.
+# The token stays FUNCTIONAL where it must be strict: the `<token>:dispatch` / `<token>:degraded`
+# annotation markers below (the opt-in switches) match the CONFIGURED token exactly.
 PREAMBLE_HEADER_RE = re.compile(
-    r"FIELDBOOK DISPATCH PREAMBLE\s+v(?P<ver>\d+\.\d+\.\d+)\s+contract:(?P<contract>\S+)\s+"
+    r"\S+ DISPATCH PREAMBLE\s+v(?P<ver>\d+\.\d+\.\d+)\s+contract:(?P<contract>\S+)\s+"
     r"sha256:(?P<sha>[0-9a-fA-F]{64})"
 )
-PREAMBLE_END_RE = re.compile(r"END FIELDBOOK DISPATCH PREAMBLE")
+PREAMBLE_END_RE = re.compile(r"END \S+ DISPATCH PREAMBLE")
 
 
 class Finding:
@@ -236,11 +268,11 @@ def workflow_is_governed(leg_region):
     return bool(CONTRACT_PIN_RE.search(leg_region))
 
 
-AGENT_DECL_RE = re.compile(r"<!--\s*fieldbook:dispatch\b(?P<body>.*?)-->", re.DOTALL)
+AGENT_DECL_RE = re.compile(r"<!--\s*" + re.escape(DISPATCH_ANNOTATION) + r"\b(?P<body>.*?)-->", re.DOTALL)
 
 
 def parse_agent_declaration(prompt):
-    """Parse the `<!-- fieldbook:dispatch ... -->` block out of an Agent prompt. Returns a dict of fields
+    """Parse the `<!-- <token>:dispatch ... -->` block out of an Agent prompt. Returns a dict of fields
     (lower-cased keys) or None when absent. The block IS the opt-in switch for the Agent surface."""
     if not isinstance(prompt, str):
         return None
@@ -271,13 +303,13 @@ LEDGER_ID_RE = re.compile(r"^(FR|REV|OQ|INC|WU|LP)-\d+", re.IGNORECASE)
 
 
 def parse_degraded_annotation(text):
-    """Scan `text` for a `fieldbook:degraded` block and return its fields dict, or None. Comment-style
+    """Scan `text` for a `<token>:degraded` block and return its fields dict, or None. Comment-style
     agnostic: it finds the marker line, then reads following `key: value` lines, stripping `//`, `*`,
     `<!--`, `-->`, `#` comment furniture, until a line with no `key:` shape (or a fence close)."""
     lines = text.split("\n")
     start = None
     for i, ln in enumerate(lines):
-        if "fieldbook:degraded" in ln:
+        if DEGRADED_ANNOTATION in ln:
             start = i
             break
     if start is None:
@@ -338,7 +370,7 @@ def degraded_artifact_resolves(ref):
     if LEDGER_ID_RE.match(ref):
         return True
     if "/" in ref or ref.endswith((".md", ".json", ".jsonl", ".txt")):
-        base = os.environ.get("FIELDBOOK_GATE_CWD") or os.getcwd()
+        base = os.environ.get(GATE_CWD_ENV) or os.getcwd()
         cand = ref if os.path.isabs(ref) else os.path.join(base, ref)
         return os.path.isfile(cand)
     return False
@@ -386,9 +418,10 @@ def check_workflow(script, findings):
     if pre is None:
         findings.append(Finding(
             "CW1", FAIL, "workflow", "preamble",
-            "governed workflow (contract: v1) is missing the FIELDBOOK DISPATCH PREAMBLE block — the "
+            "governed workflow (contract: v1) is missing the %s block — the "
             "fail-loud primitives (assertComplete/manifestDiff/fanout) must be pasted in so a dropped unit "
-            "cannot vanish. Paste the block from the kit (see make-preamble.sh); contract v1 R1."))
+            "cannot vanish. Paste the block from the kit (see make-preamble.sh); contract v1 R1."
+            % PREAMBLE_MARKER))
     else:
         computed = canonical_body_hash(pre["body"])
         ver = pre["version"]
@@ -474,7 +507,7 @@ def check_agent(tool_input, findings):
                 "CA1", WARN, "agent", "tool_input.model",
                 "dispatch has no explicit model pin — pin the model tier so a fan-out never silent-inherits "
                 "the session model (contract v1 R5). (WARN: this dispatch has not opted into the contract; "
-                "add a <!-- fieldbook:dispatch --> block to make the pin a hard requirement.)"))
+                "add a <!-- %s --> block to make the pin a hard requirement.)" % DISPATCH_ANNOTATION))
 
     if not declared:
         return  # brownfield-inert: the rest of the Agent catalog is silent on an undeclared dispatch
@@ -535,7 +568,7 @@ def write_audit(audit_events, payload):
     the caller surfaces whether the trail landed (an un-audited bypass is a contradiction in terms)."""
     if not audit_events:
         return True
-    base = payload.get("cwd") or os.environ.get("FIELDBOOK_GATE_CWD") or os.getcwd()
+    base = payload.get("cwd") or os.environ.get(GATE_CWD_ENV) or os.getcwd()
     audit_dir = os.path.join(base, ".agent-docs")
     if not os.path.isdir(audit_dir):
         return False
@@ -565,8 +598,8 @@ def emit_decision(findings, audit_events, payload, note=None):
         for f in fails:
             reason_lines.append("  - [%s/%s @ %s] %s" % (f.check, f.level, f.locus, f.msg))
         reason_lines.append("Contract: see %s (R1-R6). To ship degraded on purpose, add a well-formed "
-                            "fieldbook:degraded annotation (enumerated checks, reason, resolvable artifact)."
-                            % REFERENCE_DOC)
+                            "%s annotation (enumerated checks, reason, resolvable artifact)."
+                            % (REFERENCE_DOC, DEGRADED_ANNOTATION))
         out = {"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                       "permissionDecision": "deny",
                                       "permissionDecisionReason": "\n".join(reason_lines)}}
@@ -621,7 +654,7 @@ def read_workflow_script(tool_input, payload):
         return tool_input["script"], None
     sp = tool_input.get("scriptPath")
     if isinstance(sp, str) and sp:
-        base = payload.get("cwd") or os.environ.get("FIELDBOOK_GATE_CWD") or os.getcwd()
+        base = payload.get("cwd") or os.environ.get(GATE_CWD_ENV) or os.getcwd()
         path = sp if os.path.isabs(sp) else os.path.join(base, sp)
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as fh:
@@ -697,29 +730,43 @@ def mode_hash_preamble(path):
     with open(path, "r", encoding="utf-8", errors="replace") as fh:
         pre = extract_preamble(fh.read())
     if pre is None:
-        sys.stderr.write("dispatch-gate: no FIELDBOOK DISPATCH PREAMBLE header found in %s\n" % path)
+        sys.stderr.write("dispatch-gate: no %s header found in %s\n" % (PREAMBLE_MARKER, path))
         return 2
     print(canonical_body_hash(pre["body"]))
     return 0
 
 
 def mode_make_preamble(path):
+    """Recompute the canonical body hash AND stamp the CONFIGURED protocol-token label into the header +
+    END marker lines, then rewrite the header sha256 in place. This is how preamble.js DERIVES FROM THE
+    SAME SOURCE as the gate: a fork that renames the token (constant or DISPATCH_GATE_TOKEN) regenerates
+    its preamble.js label from this one place rather than hand-editing it. Under the DEFAULT token the
+    label re-stamp is a no-op, so the shipped preamble.js stays byte-identical. Detection is token-agnostic
+    (extract_preamble), so this can re-label a preamble.js that currently carries any token."""
     with open(path, "r", encoding="utf-8", errors="replace") as fh:
         text = fh.read()
     pre = extract_preamble(text)
     if pre is None:
-        sys.stderr.write("dispatch-gate: no FIELDBOOK DISPATCH PREAMBLE header found in %s\n" % path)
+        sys.stderr.write("dispatch-gate: no %s header found in %s\n" % (PREAMBLE_MARKER, path))
         return 2
     new_hash = canonical_body_hash(pre["body"])
     lines = text.split("\n")
     hidx = pre["header_line_idx"]
+    # Stamp the configured token label (any current `<tok> DISPATCH PREAMBLE` -> the configured marker),
+    # then refresh the sha256. Both are inside the header LINE (outside the hashed body), so the body hash
+    # is unaffected by the label change.
+    lines[hidx] = re.sub(r"\S+ DISPATCH PREAMBLE", PREAMBLE_MARKER, lines[hidx], count=1)
     lines[hidx] = re.sub(r"sha256:[0-9a-fA-F]{64}", "sha256:" + new_hash, lines[hidx])
+    for j in range(hidx + 1, len(lines)):
+        if PREAMBLE_END_RE.search(lines[j]):
+            lines[j] = re.sub(r"END \S+ DISPATCH PREAMBLE", "END " + PREAMBLE_MARKER, lines[j], count=1)
+            break
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
     print(new_hash)
-    sys.stderr.write("dispatch-gate: rewrote %s header to v%s sha256:%s\n"
+    sys.stderr.write("dispatch-gate: rewrote %s header to '%s' v%s sha256:%s\n"
                      "  If the version changed, update PINNED_PREAMBLES in dispatch-gate.py to match.\n"
-                     % (path, pre["version"], new_hash))
+                     % (path, PREAMBLE_MARKER, pre["version"], new_hash))
     return 0
 
 

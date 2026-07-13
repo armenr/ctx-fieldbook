@@ -30,6 +30,28 @@ FX = os.path.join(HERE, "fixtures")
 TAMPER_FROM = "(r === null || r === undefined) ? i : null"
 TAMPER_TO = "r ? null : i"
 
+# Active protocol token — MIRRORS dispatch-gate.py's precedence exactly (env override wins, else the shipped
+# default). The fixtures + preamble.js are authored with the DEFAULT token; when the gate runs under a token
+# override (DISPATCH_GATE_TOKEN set), retoken() rewrites the default-token markers in each composed input to
+# the active token so the fixtures exercise the gate faithfully. A no-op when the active token IS the default
+# — so the default self-test run is byte-for-byte the previous behaviour.
+DEFAULT_PROTOCOL_TOKEN = "fieldbook"
+PROTOCOL_TOKEN = (os.environ.get("DISPATCH_GATE_TOKEN") or DEFAULT_PROTOCOL_TOKEN).strip() \
+    or DEFAULT_PROTOCOL_TOKEN
+
+
+def retoken(text):
+    """Rewrite the shipped default-token markers (preamble header/END label + `<token>:dispatch` /
+    `<token>:degraded` annotations) to the ACTIVE protocol token. No-op under the default token."""
+    if PROTOCOL_TOKEN == DEFAULT_PROTOCOL_TOKEN:
+        return text
+    lo, up = PROTOCOL_TOKEN.lower(), PROTOCOL_TOKEN.upper()
+    dlo, dup = DEFAULT_PROTOCOL_TOKEN.lower(), DEFAULT_PROTOCOL_TOKEN.upper()
+    return (text
+            .replace(dup + " DISPATCH PREAMBLE", up + " DISPATCH PREAMBLE")
+            .replace(dlo + ":dispatch", lo + ":dispatch")
+            .replace(dlo + ":degraded", lo + ":degraded"))
+
 
 def read(path):
     with open(path, "r", encoding="utf-8") as fh:
@@ -37,17 +59,18 @@ def read(path):
 
 
 def compose_workflow(leg_path, preamble_mode):
-    """Build a full Workflow script: the pasted preamble (per mode) followed by the fixture's leg."""
+    """Build a full Workflow script: the pasted preamble (per mode) followed by the fixture's leg. The
+    composed script is re-tokenised to the active protocol token (a no-op under the default token)."""
     leg = read(leg_path)
     if preamble_mode == "none":
-        return leg
+        return retoken(leg)
     pre = read(PREAMBLE)
     if preamble_mode == "tampered":
         if TAMPER_FROM not in pre:
             fail("tamper fixture is VACUOUS — '%s' not found in preamble.js (a red that cannot be red)"
                  % TAMPER_FROM)
         pre = pre.replace(TAMPER_FROM, TAMPER_TO, 1)
-    return pre + "\n" + leg
+    return retoken(pre + "\n" + leg)
 
 
 def run_gate(surface, payload, emit_findings=True, cwd=None):
@@ -120,7 +143,9 @@ def main():
 
     # --- agent fixtures ---
     for name, pfile, expected, is_canary in AGENT_FIXTURES:
-        payload = json.loads(read(os.path.join(FX, "agent", pfile)))
+        # retoken the raw JSON (the `<!-- <token>:dispatch ... -->` marker lives inside a string value) so
+        # the declaration parses under an active token override; a no-op under the default token.
+        payload = json.loads(retoken(read(os.path.join(FX, "agent", pfile))))
         got = findings_set("agent", payload)
         if got != expected:
             fail("AGENT %s: expected %s, got %s" % (name, sorted(expected), sorted(got)))

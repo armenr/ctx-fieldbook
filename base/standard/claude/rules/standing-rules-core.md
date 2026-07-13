@@ -100,6 +100,15 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
   is a clean-context verifier sub-agent that re-derives the claim against the live tree with no authorship stake.
 - **This applies to DESIGNS, not just code.** Pattern: `design → split → adversarial-review` BEFORE
   implementation. A design reviewed only by its author is unreviewed.
+- **Diversify the FAILURE MODES the lenses hunt — not just reviewer identity.** Distinct authorship is
+  necessary, not sufficient: independent reviewers running ONE shared prompt breed ONE shared blind spot.
+  Assign each lens a distinct failure class, and probe a CONVERGED mechanism model at its BOUNDARY
+  conditions — one verb can name two control-flow paths, and a review that never separates them audits
+  only one of them.
+- **A dead field is a SYMPTOM, not a nit — trace before deleting.** A write-only / never-read field is
+  evidence that some path FORGOT to consult it; find out WHY it exists before removing it. Acting on the
+  "unused field" removal-nit literally can entrench the very bug the field was meant to catch — the fix
+  is usually the missing read, not the deletion.
 - **A capped or budget-limited audit run yields a LOWER BOUND, not a completed floor.** If the run stopped
   on a cap (time, tokens, item count) rather than exhaustion, report "found ≥ N" — never "found all N".
 - **0/N findings refuted is a smell, not a triumph — check the refuter before celebrating.** A perfectly
@@ -148,6 +157,11 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
 
 Every dispatched agent (Agent tool or Workflow worker) operates under this contract; bake it into the
 prompt + the return schema, every time.
+- **One voice per name (the one-voice fence).** On any shared or external channel that speaks FOR
+  this repo (an agent room, an issue tracker, a review thread), only the PRIMARY session speaks.
+  A dispatched agent reports to its orchestrator — it never posts, replies, or arms listeners
+  under the repo's name, and it ignores any channel event that reaches its session. Bake this
+  line into every dispatch prompt where such a channel exists.
 - **Hard scope fence (stay in lane).** The prompt names the EXACT files the agent may touch + its single
   purpose + an explicit *do NOT fix / refactor / improve anything outside that, even if it's obviously broken*.
 - **Posture = report-all, act-only-in-lane.** Full judgment INSIDE the scoped task; any out-of-scope
@@ -202,6 +216,32 @@ of this rule — R1–R6, the two sanctioned shortfall paths (halt-and-repair ·
 reference primitive, and the hardened declared-degraded escape-hatch grammar — lives in
 `.agent-docs/reference/fail-loud-dispatch-contract.md` and is mechanised by the `dispatch-gate` PreToolUse
 hook; this section points there and never restates it.
+
+## Interrupt triage — inbound mail is a doorbell, not a detour
+
+When a message lands mid-work (agent-room mail, or any async inbound), CLASSIFY before
+acting — the protected resource is the main workstream's context. Four rungs, first match
+wins:
+
+1. **FYI / answerable in a sentence** → answer inline or just note it; no ceremony. Never
+   spawn a dispatch for ack-class work.
+2. **Real work, no operator judgment needed** → dispatch it to a sub-agent NOW — under the
+   full dispatch contract, the fail-loud contract, and the one-voice fence (it reports back
+   to YOU, never to the room) — and RETURN to the main thread. The interrupt never rides the
+   main context.
+3. **Needs operator judgment / adjudication** → ASK-DON'T-BLOCK: put ONE question to the
+   operator ("side-quest this now, or queue it?") AND file the obligations-ledger row in the
+   same motion (default-if-silent: queue) — the ask must survive the operator being away and
+   your own compaction. Then continue the main thread.
+4. **Bigger than one dispatch** → durable filing: an obligations row with a trigger (or a
+   backlog entry) so the orient/handoff sweeps keep it in view. Anything not on disk at the
+   next boundary is gone.
+
+Unsure which rung → rung 4 plus the rung-3 one-liner. Cheap-and-reversible beats
+misclassified.
+
+(Lineage: work-unit INTAKE miniaturized for interrupts — the handler stays short: capture,
+route, return.)
 
 ## Context lifecycle
 

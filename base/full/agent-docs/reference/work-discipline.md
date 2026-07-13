@@ -185,7 +185,11 @@ core §"Cycle start" (the docs-impact-sweep rule) — this gate does not restate
 3. **Don't trust a relayed finding.** Reproduce the bug firsthand against the live tree; the imagined
    mechanism differs from the real one, and the mechanism dictates the fix.
 4. **The reviewer is never the builder — and one review isn't enough.** After in-workflow review, an
-   independent fresh-context verifier runs before merge (G4).
+   independent fresh-context verifier runs before merge (G4). But independent panels can still
+   CORRELATE: the same code read through the same correct-but-INCOMPLETE mechanism model yields ONE
+   shared blind spot — a four-lens panel unanimously passed a commit-path failure that a firsthand diff
+   read caught. A green N-lens review is a DISTINCT confidence layer, never a substitute for the
+   orchestrator's own read of the load-bearing diff.
 5. **Don't trust an "accepted" design on a load-bearing surface.** Such surfaces get design →
    adversarial design review → build, iterated to convergence. The dead-ends are the value.
 6. **"Tests green" ≠ "done."** Done = green AND IMPL→WIRED AND hands-on. Green without a falsifier
