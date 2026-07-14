@@ -930,6 +930,7 @@ def r_clients(p):
     print(f"  {'client':<14}{'repos':>6}{'hours':>8}{'revenue':>14}{'eff rate':>12}"
           f"{'break-even':>12}{'target':>12}{'verdict':>16}")
     unknown_fx = set()
+    retainer_seen = []
     for name, c in cl.items():
         ev = load(client_files(c))
         if not ev:
@@ -953,10 +954,21 @@ def r_clients(p):
         tgt_local = be_local * (1 + mk)
 
         if c.get("retainer"):
+            # KNOWN LIMITATION, and it is a real one. Months are the SPAN of the
+            # transcripts, which is a proxy for tenure, not tenure. A transcript
+            # store cannot know when a retainer started: a stray old session
+            # stretches the span and inflates revenue; a month you did not open the
+            # laptop shortens it and deflates revenue. Either can flip the verdict
+            # between BLEEDING and healthy. Fixing it properly means asking the user
+            # for a start date, which is a change to the clients.json schema, so it
+            # is disclosed here and in the README rather than guessed at. The
+            # retainer_span_note() footer says so at run time: a caveat nobody reads
+            # is a caveat nobody has.
             months = (ev[-1]["ts"] - ev[0]["ts"]) / 86400 / 30.44
             rev = c["retainer"] * max(months, 1.0)
             rate = rev / h
             label = f"{cur} {c['retainer']:,.0f}/mo"
+            retainer_seen.append(name)
         elif c.get("billed"):
             rev, rate = c["billed"], c["billed"] / h
             label = f"{cur} {c['billed']:,.0f}"
@@ -989,6 +1001,14 @@ def r_clients(p):
               f" Set fx_to_usd on those clients.")
     print("  hours EXCLUDE everything outside Claude Code. Set offline_h in clients.json.")
     print("  eff rate is TAKE-HOME per hour, not margin. Your own hours are not a cost.")
+    if retainer_seen:
+        print(f"\n  RETAINER MONTHS ARE A PROXY: for {', '.join(sorted(retainer_seen))},"
+              " revenue is")
+        print("  the retainer times the SPAN of your transcripts, because no transcript")
+        print("  knows when the retainer started. One stray old session stretches the span")
+        print("  and overstates revenue; a quiet month shortens it and understates revenue.")
+        print("  Either can flip the verdict. Sanity-check the months against what you have")
+        print("  actually invoiced before you act on the verdict for a retainer client.")
 
     # A repo the map does not claim SILENTLY vanishes from this report, and a
     # vanished repo is a client you forgot to bill. Make the gap loud.

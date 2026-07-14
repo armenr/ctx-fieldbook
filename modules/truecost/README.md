@@ -6,7 +6,13 @@ tags: [module, truecost, estimation, opt-in]
 related: [truecost, test_truecost, clients.example]
 ---
 
-# truecost
+# truecost module (opt-in)
+
+> **Not wired by default.** truecost is an **any-profile opt-in**: the concierge offers it at Minimal,
+> Standard and Full, and skipping it costs you nothing else in the kit. It is **global only**, installing to
+> `~/.claude/skills/truecost/` rather than into your repo, because it reads the transcripts of *every*
+> project. If you never want to know how long anything took, skip the module: it adds a skill you will not
+> use.
 
 **Stop guessing how long Claude Code takes. You already have the receipts.**
 
@@ -54,11 +60,16 @@ call it the total.
 
 ```bash
 mkdir -p ~/.claude/skills/truecost
-cp -R truecost/ ~/.claude/skills/truecost/
+cp -R truecost/. ~/.claude/skills/truecost/
 ```
 
-(The trailing slashes matter. They copy the *contents* in, so re-running this to
-upgrade overwrites the skill in place instead of nesting a copy inside it.)
+(The `/.` matters, and it is not the same as a trailing slash. `cp -R truecost/. <dest>/`
+copies the *contents* in on both BSD `cp` (macOS) and GNU `cp` (Linux), so re-running it
+to upgrade overwrites the skill in place. The older `cp -R truecost/ <dest>/` form does
+that only on macOS: GNU `cp` ignores the trailing slash on the source and copies the
+directory itself, giving you `~/.claude/skills/truecost/truecost/`, which puts `SKILL.md`
+at a path Claude Code never looks in, so the skill silently fails to load. A `truecost/*`
+glob is also wrong: it skips the dotfile.)
 
 That is the whole install. It is a **user-level skill**, so it is live in every repo
 immediately. There is nothing to activate, nothing to register, no config file to
@@ -400,12 +411,37 @@ tool from inside a repo.
   above.
 - **Utilization is only as good as its source.** If you told the tool a number instead
   of measuring one, every report will say ASSUMED. Believe it.
-- **Unknown models are priced at the most expensive tier in the table.** The fallback
-  is derived from `PRICES`, not hardcoded, so it stays true as you add models. The
-  tool would rather overstate your spend than quietly understate it.
+- **Unknown models are priced at the ceiling of the table.** The fallback is derived
+  from `PRICES`, not hardcoded, and it is at least as expensive as every row *per
+  component* (input and output separately), so it stays true as you add models, even
+  one with a cheap input and a dear output. The tool would rather overstate your spend
+  than quietly understate it.
 - **A "session" that never ends is not a project.** Time is only ever counted inside
   15-minute gaps. Everything longer is discarded, so nights, weekends and the months
   between two visits to a repo contribute exactly zero.
+- **Retainer months are a PROXY, not tenure.** For a retainer client, `--clients`
+  computes revenue as the retainer times the *span of your transcripts*, because
+  nothing in a transcript store knows when the retainer actually started. A stray old
+  session stretches the span and overstates revenue; a month you never opened the laptop
+  shortens it and understates revenue. Either can flip a client between `!! BLEEDING !!`
+  and `healthy`. The report says so at run time, and it is the one number in the client
+  rollup you should sanity-check against what you have actually invoiced. Fixing this
+  properly means recording a start date per client, which is a change to the
+  `clients.json` schema and is deliberately not made here.
+
+## Uninstalling
+
+The skill is a plain folder: `rm -rf ~/.claude/skills/truecost` removes it. Your data lives
+*outside* the skill folder (`~/.claude/truecost/`, or `$TRUECOST_HOME`), so deleting the
+skill does not touch your profile, your client map, or your prediction ledger. Delete that
+directory separately if you want those gone too.
+
+If the Fieldbook concierge installed this for you, it recorded the six files in that repo's
+`.agent-docs/.kit-manifest.json`, and a Fieldbook uninstall from that repo will remove them,
+the same way it removes a globally-scoped statusline. Worth knowing: **this skill is
+machine-wide**. It was installed once, into `~/.claude/`, and every project on your machine
+shares that one copy, so uninstalling Fieldbook from a single repo takes truecost away from
+all of them.
 
 ## Tests
 

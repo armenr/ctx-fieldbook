@@ -6,7 +6,13 @@ created: 2026-07-14
 last-modified: 2026-07-14
 ---
 
-# truecost
+# /truecost: measure what work actually took, then forecast from that
+
+> **OPTIONAL any-profile module, not wired by default.** Available at Minimal, Standard and
+> Full. Installs **globally** (`~/.claude/skills/truecost/`), never into a repo, because it reads
+> the transcripts of *every* project. Precondition: some Claude Code history to read. A fresh
+> machine has nothing to measure, and the skill will say so rather than invent a number. If you
+> never need to answer "how long will this take", skip the module: it adds a skill you will not use.
 
 Every time estimate you have ever been given was a guess. This one is measured.
 
@@ -17,6 +23,28 @@ the work took is recoverable from them. **Do not estimate what you can measure.*
 
 It measures the past AND forecasts the next one. Scheduling and pricing are the
 same problem: both die the moment somebody invents a number.
+
+## When to invoke
+
+- **BEFORE giving any time estimate or deadline.** "How long will this take?", "can we ship by
+  Friday?", "is that enough time?" This is the headline case, and it is the one people skip.
+- Mid-build progress: "what percent are we through?", "how many hours has this eaten?"
+- After the fact: "how long did X actually take?", "what did this project cost?"
+- Pricing billable work, if you invoice: "what should I quote?", "am I underpricing?", "did this
+  engagement make money?" Needs a profile (`--setup`); everything else does not.
+- Whenever anyone, including you, starts estimating operator hours without measuring them.
+
+## When NOT to invoke
+
+- **There is no Claude Code history for the work in question.** A forecast with no comparable is a
+  guess with a tool's authority on it. Say "no comparable found", say why, and give a range you
+  label ESTIMATED. Do not run the tool and quote its silence as a number.
+- **The work is mostly outside Claude Code.** Design, meetings, manual QA, deploys and thinking are
+  in no transcript. If those dominate, the tool's hours are a fraction of the truth and must not be
+  handed over as the total. Add them by hand (`--offline N`) and label them added.
+- **Someone wants a number to justify a price already chosen.** That is not measurement.
+- Wall-clock questions about subagents. Agents running in parallel while you make coffee is not
+  you working, and the tool deliberately refuses to count it.
 
 ## Run it
 
@@ -389,18 +417,51 @@ Copy `clients.example.json` to `~/.claude/truecost/clients.json` and edit it. Ke
 it current: add every new client, and set `offline_h` for the work the transcripts
 cannot see. A client whose `offline_h` is 0 is a client whose hours are wrong.
 
-## Rules that keep this honest
+## Anti-patterns
 
-- **Never present an estimate as a measurement.** If you did not run the tool, say
-  ESTIMATED, out loud.
-- **Never fold agent wall-clock into attention time.** It is nearly free and it
-  inflates your hours.
-- **Never quote token cost to a client as an expense** if you are on a subscription.
-- **Watch for a scope that grew to fit a price.** If a quote has ballooned, check
-  whether the deliverables inflated to justify the number, rather than the number
-  following the work. That is the mechanism by which a modest job becomes a proposal
-  nobody can defend line by line.
-- **Label utilization MEASURED or ASSUMED, every time.** An assumed utilization is a
-  guess wearing a lab coat.
-- The transcripts only cover work done in Claude Code. Hand-written code, calls, and
-  client meetings are not in them. Add those separately, and label them as added.
+The rules that keep this honest. Every one of them is a way to turn a measurement back into a
+guess while keeping the authority of the tool.
+
+- Do **NOT** present an estimate as a measurement. If you did not run the tool, say ESTIMATED,
+  out loud.
+- Do **NOT** fold agent wall-clock into attention time. It is nearly free, and it inflates your
+  hours.
+- Do **NOT** quote token cost to a client as an expense if you are on a subscription. It is
+  prepaid, not marginal cash. It is also not free. Both statements are wrong.
+- Do **NOT** hand over the tool's hours as the total. The transcripts only cover work done in
+  Claude Code. Hand-written code, calls, deploys and client meetings are not in them. Add those
+  separately (`--offline N`) and label them as added.
+- Do **NOT** let scope grow to fit a price. If a quote has ballooned, check whether the
+  deliverables inflated to justify the number rather than the number following the work. That is
+  how a modest job becomes a proposal nobody can defend line by line.
+- Do **NOT** report utilization without labelling it MEASURED or ASSUMED. An assumed utilization
+  is a guess wearing a lab coat.
+- Do **NOT** trust a retainer client's verdict without a sanity check. Retainer months are the
+  span of your transcripts, which is a proxy for tenure, not tenure (see the README's limitations).
+- Do **NOT** auto-commit. The tool reads; you decide what to do about what it says.
+- Do **NOT** include secrets, credentials, or regulated / user data in anything you write out of
+  this skill. A wage, a client name and a rate are sensitive: they live in `~/.claude/truecost/`,
+  outside the repo, and they belong in no commit, no report and no channel. Reference paths.
+
+## Design rationale
+
+**Do not estimate what you can measure.** The transcripts already exist, they are timestamped per
+turn, and they carry exact token counts. Every hour argued about in a planning meeting is sitting
+on disk, unread. The whole skill is a refusal to guess in the presence of evidence.
+
+**Active time, not wall-clock.** A gap longer than 15 minutes means you left the desk and counts as
+zero, not as fifteen minutes. Capping instead of dropping would bill every night, every weekend and
+every gap between two projects, which is exactly how a tool starts inventing hours and then
+invoicing them. Subagent turns burn real tokens and are counted for spend, but never for time.
+
+**Fail loud, never flatter.** An unknown model is priced at the ceiling of the table and says so.
+A bad `--wage` is refused rather than quoted. A missing profile is a hard stop, not a fallback to
+somebody else's rate card. The one failure this tool cannot survive is a wrong number stated
+calmly, because a wrong number that looks right gets invoiced.
+
+**The honest limit is part of the product.** truecost sees Claude Code and nothing else, so the
+real delivery hours are ALWAYS higher than what it reports. The README says so, the reports say
+so, and this skill says so. A measurement tool that hides its blind spot is worse than no tool,
+because it is believed.
+
+Related: `modules/truecost/README.md` (the full model, the limitations, the client mapping).
