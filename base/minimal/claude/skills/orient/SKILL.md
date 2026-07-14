@@ -1,9 +1,9 @@
 ---
 name: orient
-description: Read .agent-docs/now/handoff.md and surface current session state. Use at session start, after time away, or when reorienting ("where are we?"). Pulls live git state at invocation, verifies the handoff isn't stale against git reality (code ahead of docs → trust the code), runs a quick state-file health sweep (the folded-in /status check), and surfaces obligations-ledger deltas — landed / came due / overdue / dangling — from now/obligations.md when it exists, else the handoff's Obligations section.
+description: Read .agent-docs/now/handoff.md and surface current session state. Use at session start, after time away, or when reorienting ("where are we?"). Pulls live git state at invocation, verifies the handoff isn't stale against git reality (code ahead of docs → trust the code), runs a quick state-file health sweep (the folded-in /status check), surfaces obligations-ledger deltas — landed / came due / overdue / dangling — from now/obligations.md when it exists, else the handoff's Obligations section, and on multi-party installs runs the Room-threads resume step (read the handoff's continuity block, refresh from the comms log since the handoff timestamp, apply the re-read rule before any post).
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-10
+last-modified: 2026-07-14
 tags: [skill, lifecycle, orient]
 ---
 
@@ -77,6 +77,25 @@ Then compute:
 
 Do NOT chase or settle here — `/orient` reads and surfaces; `/flush` and `/handoff` mutate.
 
+## 3.7 Room-thread resume (multi-party installs only)
+
+If the handoff carries a `## Room-threads` section (`/handoff` §8.6 — present only on
+multi-party installs with ≥1 live inter-agent thread), it is the amnesia-proofing for
+in-flight conversations on the shared comms layer. BEFORE touching that layer:
+
+1. **Read the section first** — thread + subject, participants + locked roles, YOUR role
+   and its status, standing hooks, durable-base pointers, do-not-relitigate markers.
+2. **Refresh from the comms log SINCE the handoff's timestamp** — the section's
+   message-id anchors are the lookup keys. Threads move faster than handoffs regenerate;
+   the section orients you, the log is ground truth.
+3. **Apply the section's re-read rule before posting ANYTHING into a thread:** re-read
+   your own last post and all replies to it first. A post made from the handoff's frame
+   alone — without the log refresh — is the confident-wrong failure mode this machinery
+   exists to kill.
+
+No Room-threads section → nothing to resume; skip. Do not post from this step — `/orient`
+reads and surfaces; responding to what moved is the session's work, not orientation's.
+
 ## 4. Surface to user (concise — ~12 lines)
 
 - **TL;DR**: 1-2 sentences pulled from `status.md`
@@ -84,6 +103,7 @@ Do NOT chase or settle here — `/orient` reads and surfaces; `/flush` and `/han
 - **Active open questions** that gate forward motion (typically 1-3 `OQ-NNN` from `open-questions.md`)
 - **Active work-unit(s)**: the `WU-NNNN` in flight
 - **Obligations deltas** *(from §3.6)*: one line — what **landed** (unblocked), what **came due** (you owe now), what's **overdue** (which default-if-silent fired), any **dangling / rot-risk** row. Omit if the ledger is absent or unchanged.
+- **Room-threads** *(multi-party, from §3.7)*: one line per live thread — thread · your role · what moved in the comms log since the handoff · your next deliverable/hook. Omit when the section is absent.
 - **Staleness / health flags** if any (from §2 + §3.5) — incl. "a `/sitrep` post-dates the handoff" if so
 - **Recent commits**: 3-5 lines from the live git state above
 

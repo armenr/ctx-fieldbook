@@ -1,10 +1,10 @@
 ---
 name: handoff
-description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality; sweeps the inter-party obligations ledger both directions (owed-by / owed-to, each receivable carrying a trigger + a default-if-silent) — the standalone now/obligations.md when it exists, else a handoff Obligations section. Accepts optional session notes as arguments. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
+description: Capture current session state to a curated artifact at .agent-docs/now/handoff.md plus an archive entry at .claude/handoffs/<timestamp>-<slug>.md. Updates now/status.md, now/work-plan.md, now/open-questions.md, log.md to current reality; sweeps the inter-party obligations ledger both directions (owed-by / owed-to, each receivable carrying a trigger + a default-if-silent) — the standalone now/obligations.md when it exists, else a handoff Obligations section; on multi-party installs, sweeps live inter-agent room threads into a Room-threads continuity block (participants/roles, message anchors, standing hooks, the re-read rule). Accepts optional session notes as arguments. Use at natural checkpoints, before compaction, before session-end, or when context exceeds ~80%. Does NOT auto-commit.
 argument-hint: [optional session notes to fold into the handoff]
 provenance: kit-template
 created: 2026-07-03
-last-modified: 2026-07-10
+last-modified: 2026-07-14
 tags: [skill, lifecycle, handoff]
 ---
 
@@ -104,6 +104,40 @@ Update `last-modified` on the ledger surface you swept (`now/obligations.md`, or
 
 **When there is no `now/obligations.md`** (single-party / Minimal, or a Standard install carrying the section form): maintain the SAME content — same schema (single source: `obligations.template.md`), same Trigger + Default-if-silent requirement, same gate-safety rule — as a lighter `## Obligations` bullet section inside the regenerated `handoff.md` (§8.5). Capturing only at this handoff cadence (lower fidelity than the standalone file) is the accepted single / low-party trade.
 
+## 5.6 Room-thread continuity sweep (multi-party installs only)
+
+Applies ONLY when this install coordinates with other agents through a shared comms layer
+(a room / channel / append-only agent-comms log — the same conditionality PATTERN as
+§5.5's file-form branch, keyed on its own runtime fact: the comms layer's existence).
+No comms layer → skip entirely; the regenerated handoff carries no Room-threads section.
+
+Obligations rows carry the DEBTS; this sweep carries the CONVERSATIONS. A live design or
+coordination thread is state the ledger's rows do not preserve — who leads, what has
+converged, what may not be re-litigated, which message you answered last. Post-compaction,
+an agent that rejoins a fast-moving thread from a stale frame posts confidently-wrong
+content into it; that is the exact failure this section exists to prevent.
+
+For EACH live thread (a conversation mid-exchange where you hold a role or owe a future
+response — a settled thread gets a `log.md` line, never a section):
+
+- **Thread + one-line subject** — what is being designed or decided.
+- **Participants + locked roles** — who leads, who owns which deliverable, and YOUR role
+  with its current status (delivered / owing / on-hook).
+- **Message anchors** — the id of YOUR last post + the last inbound id you processed
+  (these are the re-read lookup keys).
+- **Your standing hooks** — the specific future events that re-activate you (a
+  counterparty's build closing, a review landing) and what you do when each fires.
+- **Durable-base pointers** — where the thread's converged state lives ON DISK (your
+  surfaces and theirs), pointers only: carry the paths, never re-inline the content
+  (flush-safe — the durable docs hold the frame; prose copies rot).
+- **Converged / do-not-relitigate markers** — anything the thread has settled that a
+  fresh session must not reopen.
+- **THE RE-READ RULE (copy it verbatim into the section — load-bearing):**
+  post-compaction or cold-start, BEFORE posting anything into the thread, re-read the
+  comms log since this handoff's timestamp PLUS your own last post and all replies to it.
+  A post made from a stale frame is the confident-wrong failure mode; the re-read is
+  cheap, the wrong post is not.
+
 ## 6. Append entry to `.agent-docs/log.md`
 
 Newest at top: `## [YYYY-MM-DD] handoff | <one-line session summary>` + 2-3 lines. Plus discrete `decision | ...`, `memory | ...`, `ingest | ...` entries as warranted.
@@ -165,6 +199,12 @@ Sections:
 7. `## Immediate next steps` — concrete, with specific paths, commands, confirmation gates. Load-bearing for resume. For any in-flight / just-completed workflow carried forward (if you ran any), add a **verify-AFTER-the-workflow block**: the result-integrity checks + metric confounds + "trust X not Y" caveats the next agent must apply to its output (not just resume mechanics). Include any reusable **env/build RECIPE** / verification GATE discovered as a **labeled, greppable verbatim block**.
 8. `## Recent decisions made` — table: when, decision, rationale/reference.
 8.5. `## Obligations` — **present ONLY when `now/obligations.md` does NOT exist** (if the standalone file exists it is the ledger, ADR-0012, and this section is omitted). Carry the SAME schema as `obligations.template.md` — the single authority; do NOT restate columns that could drift from it — rendered as a compact bullet list, not the full tables: a **Waiting on (owed to me)** list (each bullet: *counterparty · what (may cite an id) · HARD (gates MY work) / SOFT · @trigger · default-if-silent* — Trigger + default-if-silent mandatory; no `apply-default` on an operator / authorization row) and an **I owe (owed by me)** list (*counterparty · what · HARD (gates THE COUNTERPARTY's work) / SOFT · due/trigger*), plus a one-line Tripwires note (POINT at an id) and a Settled line (journaled to `log.md`, then pruned). Rows point at `OQ-`/`WU-`/`REV-` ids, never duplicate them.
+8.6. `## Room-threads` — **present ONLY on multi-party installs with ≥1 live thread**
+     (§5.6 is the sweep that populates it; omit the section entirely otherwise). One block
+     per live thread carrying the §5.6 fields — participants + locked roles, your role +
+     status, message anchors, standing hooks, durable-base pointers, do-not-relitigate
+     markers, and the re-read rule verbatim. This is the section `/orient`'s room-thread
+     resume step reads BEFORE the agent touches the comms layer.
 9. `## Breadcrumbs / artifacts` — scratch dirs / spike harnesses built outside the repo (location + verdict + keep-or-clean); ephemeral / temp-dir outputs + their durable transcript paths + resume commands. Things that live in no git tree.
 10. `## Reading order` — pointer at status/work-plan/open-questions/CLAUDE.md **+ the latest `checkpoints/` sitrep if one post-dates this handoff** (it is the zero-loss forensic record — the handoff curates; the sitrep preserves the dead-ends at full fidelity).
 11. `## Recent commits` — head of branch (last 5). (Dispatch-heavy session? Fold the §6.5a ledger here.)

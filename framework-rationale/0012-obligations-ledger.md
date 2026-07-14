@@ -45,7 +45,7 @@ regenerated 0 times. Obligations move on their **own clock**, mid-session — *i
 multi-party work*. That scoping is load-bearing: the datum argues for a
 mid-session-writable file **where multi-party work happens**, not for a tier line (the
 form decision below). The owed-TO direction + default-if-silent has no direct kit
-precedent (only a loose accounts-receivable analog); that novelty is a risk the
+precedent (only a loose accounts-receivable analog); that lack of precedent is a risk the
 flip-conditions hedge.
 
 ## Alternatives Considered

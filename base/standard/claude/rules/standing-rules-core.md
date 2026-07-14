@@ -174,7 +174,11 @@ prompt + the return schema, every time.
   NOT acted on. If the unexpected thing BLOCKS the task, the agent returns `status: blocked` and stops — it
   never invents a workaround or expands scope to get unblocked.
 - **Non-builder agents are READ-ONLY.** Recon, fixture, review, and verify agents never mutate the tree;
-  only ONE fenced build agent per track mutates.
+  only ONE fenced build agent per track mutates. And NOBODY — builder included — un-applies an
+  UNCOMMITTED change-under-review with destructive git (`checkout`/`restore`/`stash`/`reset`): reverse
+  the edit IN PLACE and verify the blob hash (`git hash-object`) — a red-on-HEAD probe restores by
+  re-applying the edit, never by discarding the working tree (field incident: a verifier's
+  `git checkout -- <file>` reverted to HEAD and destroyed the fix under review).
 - **Parallel tracks run in isolated worktrees over pre-verified disjoint file ownership** — the ownership
   sets come from the recon-first pass and the orchestrator verifies disjointness BEFORE launch, so tracks
   cannot clobber each other mid-flight.

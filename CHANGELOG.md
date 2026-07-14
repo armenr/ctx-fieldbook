@@ -2,6 +2,32 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.6.3 — 2026-07-14 (room-thread continuity + destructive-git safety)
+
+Two field-born deltas, both dogfooded before ship.
+
+- **Room-thread continuity machinery** (multi-party installs): `/handoff` gains §5.6 — a
+  room-thread continuity sweep — and a conditional §8.6 `## Room-threads` handoff section
+  (per live inter-agent thread: participants + locked roles · your role + status · message
+  anchors · standing hooks · durable-base pointers · do-not-relitigate markers · the
+  re-read rule verbatim). `/orient` gains the matching §3.7 resume step (read the section
+  BEFORE touching the comms layer, refresh from the comms log since the handoff timestamp,
+  apply the re-read rule before any post) plus a brief line. Conditional on the same
+  runtime fact as the obligations ledger's file form — single-party installs see no new
+  ceremony. Born from a live multi-agent design thread that had to survive an operator-
+  ordered compaction mid-conversation: a post made from a stale frame is the
+  confident-wrong failure mode; the re-read is cheap, the wrong post is not.
+- **Destructive-git safety gates** (`pretooluse-safety-gates.base.sh` rule 3b): `git
+  checkout` (exempting only `-b`/`-B`), `git restore`, `git clean` with a force cluster
+  (`f`/`F` matched ANYWHERE in the flag cluster — `-xdf` must not slip because `f` isn't
+  last), and `git stash drop|clear` now ask-gate alongside `reset --hard`; `checkout`
+  joins the rule-5 mutative pattern. Companion doctrine in `standing-rules-core`
+  (read-only-dispatch bullet): NOBODY — builder included — un-applies an UNCOMMITTED
+  change-under-review with destructive git; reverse the edit IN PLACE and verify the blob
+  hash. Field incident: a verifier's `git checkout -- <file>` on a change under review
+  reverted to HEAD and destroyed the fix. 12/12 red/green battery (8 must-fire, 4
+  must-stay-silent — false-fires breed bypass workarounds).
+
 ## 0.6.2 — 2026-07-14 (doctrine micro-release)
 
 One five-line addition, operator-dictated: **the deferral test** joins `standing-rules-core`

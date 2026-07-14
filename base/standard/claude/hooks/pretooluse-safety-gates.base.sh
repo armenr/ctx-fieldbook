@@ -89,6 +89,24 @@ fi
 echo "$CMD" | grep -qE "${CSEP}git +reset +--hard([^[:alnum:]_]|$)" &&
   ask "Safety gate: 'git reset --hard' destroys uncommitted changes. Confirm cwd + target with the operator."
 
+# 3b. Working-tree-revert cousins of reset --hard (ask) — each destroys uncommitted work
+#     with zero recovery path (field incident: a verifier's `git checkout -- <file>` on an
+#     UNCOMMITTED change-under-review reverted to HEAD and discarded the fix). checkout is
+#     exempt ONLY for -b/-B (new-branch creation, always safe). The clean flag-cluster
+#     regex matches f/F ANYWHERE in the cluster — `git clean -fd` must not slip because f
+#     is not the last character (a first-ship bug in the field seed, caught only by testing
+#     the gate: test your safety tools).
+if echo "$CMD" | grep -qE "${CSEP}git +checkout([^[:alnum:]_]|$)" &&
+  ! echo "$CMD" | grep -qE "${CSEP}git +checkout +-[bB]([^[:alnum:]_]|$)"; then
+  ask "Safety gate: 'git checkout' (other than -b/-B) can irrecoverably revert uncommitted changes. Confirm the target with the operator — and to un-apply a change-under-review, reverse the edit IN PLACE and verify the blob hash; never discard the working tree."
+fi
+echo "$CMD" | grep -qE "${CSEP}git +restore([^[:alnum:]_]|$)" &&
+  ask "Safety gate: 'git restore' reverts uncommitted changes irrecoverably. Confirm the target with the operator."
+echo "$CMD" | grep -qE "${CSEP}git +clean +-[A-Za-z]*[fF][A-Za-z]*([^[:alnum:]_]|$)" &&
+  ask "Safety gate: 'git clean' with a force flag deletes untracked files irrecoverably. Confirm the target with the operator."
+echo "$CMD" | grep -qE "${CSEP}git +stash +(drop|clear)([^[:alnum:]_]|$)" &&
+  ask "Safety gate: 'git stash drop/clear' discards stashed work irrecoverably. Confirm with the operator."
+
 # 4. Recursive rm outside safe paths (ask). Matches any short-flag cluster containing r/R
 #    (-rf, -fr, -Rf, -rfv, -r) or --recursive. Safe = universal temp/cache/build dirs, plus
 #    any stack-specific dirs the fragment added via SAFE_PATHS_EXTRA.
@@ -103,7 +121,7 @@ fi
 #    can silently set the wrong context for a later mutative op (esp. in a multi-package
 #    workspace: {{WORKSPACE_LAYOUT}}). Emits cwd+branch+repo-root+tree-shape via
 #    additionalContext BEFORE allowing. Ask-gated commands above have already exited.
-MUTATIVE_PATTERN='git +(add|clean|commit|rm|mv|reset|merge|rebase|cherry-pick|stash|worktree|revert|restore|push)([^[:alnum:]_]|$)|rm +|mv +'
+MUTATIVE_PATTERN='git +(add|checkout|clean|commit|rm|mv|reset|merge|rebase|cherry-pick|stash|worktree|revert|restore|push)([^[:alnum:]_]|$)|rm +|mv +'
 if echo "$CMD" | grep -qE "${CSEP}(${MUTATIVE_PATTERN})"; then
   set +e
   PWD_NOW=$(pwd 2>/dev/null || echo "<pwd-failed>")
