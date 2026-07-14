@@ -38,6 +38,13 @@ context window, auto-compact state, context %/tokens, 5h/7d rate-limit usage, ac
 any profile, global or project-scoped — the concierge offers it, or install it by hand per
 `modules/statusline/README.md`.
 
+**Optional add-on: truecost.** Measures what work in Claude Code *actually* took, read from the session
+transcripts Claude Code already writes to your disk: active hours per project and per task with idle
+stripped out, token spend by model, and a forecast for the next job drawn from your own measured history
+rather than a feeling. Optional client billing on top. Python-only, stdlib-only, no network calls.
+Available at any profile, installed globally (`~/.claude/skills/truecost/`) so it works in every repo, not
+just this one. The concierge offers it, or install it by hand per `modules/truecost/README.md`.
+
 ## How to install
 
 The intended path: **open Claude Code with this folder as your working directory**, and it becomes an

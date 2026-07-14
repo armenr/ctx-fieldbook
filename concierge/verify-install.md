@@ -98,6 +98,21 @@ test -f .agent-docs/reference/work-discipline.md \
 
 (Minimal profile: both checks are expected-absent — skip them.)
 
+**Opted-module spot-checks** (only for modules the friend said yes to in Q5; skip any they declined, or a
+clean install reports a spurious MISS):
+
+```bash
+# truecost (any profile, GLOBAL install): the skill and its script must land TOGETHER
+test -f ~/.claude/skills/truecost/SKILL.md && test -f ~/.claude/skills/truecost/truecost.py \
+  && echo "truecost: present" || echo "truecost: MISSING (opted module)"
+# and it must actually run: the shipped suite is the proof (stdlib only; writes only to a tmpdir)
+python3 ~/.claude/skills/truecost/test_truecost.py >/dev/null 2>&1 \
+  && echo "truecost: self-test passes" || echo "truecost: self-test FAILED"
+```
+
+A `SKILL.md` present *without* `truecost.py` is this module's characteristic failure: the skill resolves,
+then dies on first invocation because the script it names by absolute path was never copied.
+
 ## 3. `settings.json` parses + is wired
 
 The hook wiring is worthless if the JSON is malformed (Claude Code silently ignores an unparseable

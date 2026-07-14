@@ -186,10 +186,20 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 | rewrite-conformance | `modules/rewrite-conformance/parity-ledger.template.md` | `<target>/.agent-docs/parity/ledger.md` (fill + drop `.template`; the FIRST row is the oracle-honest reference run) |
 | rewrite-conformance | `modules/rewrite-conformance/parity-map.template.md` | `<target>/.agent-docs/parity/<slice>-parity-map.md` (**per slice that has residue**; fill + drop `.template`) |
 | rewrite-conformance | `modules/rewrite-conformance/README.md` | reference only (not copied to target) |
+| truecost (ANY profile) | `modules/truecost/SKILL.md` | **global only:** `~/.claude/skills/truecost/SKILL.md` |
+| truecost | `modules/truecost/truecost.py` | `~/.claude/skills/truecost/truecost.py` |
+| truecost | `modules/truecost/test_truecost.py` | `~/.claude/skills/truecost/test_truecost.py` |
+| truecost | `modules/truecost/clients.example.json` | `~/.claude/skills/truecost/clients.example.json` |
+| truecost | `modules/truecost/README.md` | `~/.claude/skills/truecost/README.md` (**copied**, not reference-only: it is the user-facing doc for a global skill) |
+| truecost | `modules/truecost/.gitignore` | `~/.claude/skills/truecost/.gitignore` (a dotfile: copy with `cp -R modules/truecost/. <dest>/`; a `modules/truecost/*` glob skips it) |
 
-> The statusline is available at **any** profile (it's a per-user quality-of-life add-on, not tied to
-> Full) and is the one module whose **global** form writes to `~/.claude` — the concierge asks scope
-> (global/project) and gets a distinct yes for a global write.
+> The statusline and truecost are available at **any** profile (per-user quality-of-life add-ons, not tied
+> to Full), and they are the **two** modules that write to `~/.claude` rather than into the repo. The
+> statusline does so **optionally**: the concierge asks scope (global or project). truecost does so
+> **always**: it is a user-level skill that reads every project's transcripts, and its `SKILL.md` invokes
+> the script by its `~/.claude` path, so a repo-scoped copy would point at a file that was never installed.
+> Both need a **distinct yes** for the `~/.claude` write, and both record it in the manifest so uninstall
+> can reverse it.
 
 > **`recurrence-guard`** is available at **Standard+** (not Full-only): it wires into the `.githooks/
 > pre-commit` gate, which is a Standard payload. It is **one guard per closed bug class** — the concierge
@@ -215,6 +225,13 @@ Everything in Standard **plus** the `base/full/` payload + opted-in modules.
 > installs is that tier's **sibling**, never a row in it (**PARITY ≠ WIRED**: byte-conformance and
 > production-reachability are orthogonal axes). It wires **no hook** — the parity gate runs inside the
 > existing G1 conformance falsifiers; mechanics + the four load-bearing rules: `modules/rewrite-conformance/README.md`.
+
+> **`truecost`** is the one module copied to its destination **whole** (all six files, not just the two the
+> tool strictly needs). That keeps a concierge install byte-identical to the `cp -R` hand-install in its
+> README, and lets the friend run the shipped regression suite (`test_truecost.py`) against their own
+> install. It wires **no hook** and **no `settings.json`** block: Claude Code discovers user-level skills by
+> reading `~/.claude/skills/`. It is the only module with **no project-scoped form** at all. Mechanics +
+> the transcript-cost model + the known limitations: `modules/truecost/README.md`.
 
 ### Enforcement at Full
 - The full gate set + the traceability ledger + (if opted) the revisit-lint pre-commit check.
