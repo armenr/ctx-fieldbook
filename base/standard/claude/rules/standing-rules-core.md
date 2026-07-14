@@ -34,6 +34,11 @@ Applies to sub-agents too — every dispatch prompt involving git/fs mutation ca
 - **Brief responses, momentum, less process.** Default to forward motion; don't narrate options you won't pursue.
 - **Surface gaps loudly; be pessimistic about ambiguity.** An honest open-question (`OQ-NNN`) beats a
   polished plan with hidden assumptions. Lock scope before bulk work.
+- **The deferral test.** A deferral is legitimate only when ALL THREE hold: (a) it is DISCLOSED,
+  never silent; (b) it is a feature nobody needs yet — real YAGNI — not a promised behavior
+  quietly dropped; (c) any "fine for now" is MEASURED, not assumed. A cert or close carrying
+  deferrals passes only if each one meets the test — a dropped promised behavior or an
+  assumed-fine is a silent gap wearing a deferral's clothes.
 - **Scope for completeness, NOT MVP.** Build to a finished, wired state, not a demo — finish the
   production path or write the deferral down (a `DEFER` row) with the reason. An MVP-default leaves a
   half-wired surface.
