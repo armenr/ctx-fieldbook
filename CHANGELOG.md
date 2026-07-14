@@ -2,6 +2,16 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.6.2 — 2026-07-14 (doctrine micro-release)
+
+One five-line addition, operator-dictated: **the deferral test** joins `standing-rules-core`
+beside surface-gaps-loudly. A deferral is legitimate only when all three hold — (a) disclosed,
+never silent; (b) a feature nobody needs yet (real YAGNI), not a promised behavior quietly
+dropped; (c) any "fine for now" measured, not assumed. A cert or close carrying deferrals
+passes only if each one meets the test. Born from the acceptance-gap incidents (a mandated
+falsifier certified but never built; spec'd keys silently dropped) — the two fossils fail
+(a) and (b); one-platform certs pass only through a measured (c).
+
 ## 0.6.1 — 2026-07-14 (the convergence-findings batch)
 
 Seven field-nominated riders from the v0.6.0 convergence round — every one credited to the
