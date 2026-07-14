@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Your data lives in ~/.claude/truecost/ (or $TRUECOST_HOME), never in here.
+# These are ignored defensively, in case the tool is ever run from inside this
+# folder or someone copies their real files in by mistake. Your wage, your
+# clients and your estimates are nobody else's business.
+profile.json
+clients.json
+estimates.jsonl
