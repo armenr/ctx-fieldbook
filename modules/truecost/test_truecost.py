@@ -42,7 +42,11 @@ T0 = int(datetime(2026, 1, 5, 10, 0, 0, tzinfo=timezone.utc).timestamp())
 
 # A cwd that exists on nobody's machine. Repo naming must work from the cwd
 # recorded inside the transcript, without ever consulting the filesystem.
-FAKE_ROOT = "/Users/nobody-truecost-test"
+# Deliberately NOT a home-dir shape (/Users/..., /home/...): the kit's scrub gate
+# denies machine-path literals anywhere under modules/, and rightly so. The path is
+# never resolved, only read back out of a synthetic transcript, so any absolute
+# path that does not exist will do.
+FAKE_ROOT = "/tmp/nobody-truecost-test"
 
 # One valid billing profile, reused across tests. Chosen so every intermediate
 # value is exact in binary floating point: 120 / 0.5 = 240, 240 / 120 = 2,
@@ -353,13 +357,90 @@ class TestPricing(TempEnvTestCase):
     def test_unknown_model_priced_at_table_ceiling_and_flagged(self):
         ghost = "claude-zz-imaginary-99"
         self.assertEqual(tc._rate(ghost), tc.DEFAULT_PRICE)
-        self.assertEqual(tc.DEFAULT_PRICE, max(tc.PRICES.values()))
         self.assertIn(ghost, tc._UNPRICED)
 
     def test_placeholder_model_ids_never_flagged(self):
         for m in ("?", "", None):
             self.assertEqual(tc._rate(m), tc.DEFAULT_PRICE)
         self.assertEqual(len(tc._UNPRICED), 0)
+
+    def test_default_price_ceilings_every_row_per_component(self):
+        """The PROPERTY, not the implementation.
+
+        The old assertion was `DEFAULT_PRICE == max(PRICES.values())`, which just
+        restates the code and therefore can never fail. What the docs actually
+        promise is: at least as expensive as every row, per component.
+        """
+        for k, (pin, pout) in tc.PRICES.items():
+            self.assertGreaterEqual(tc.DEFAULT_PRICE[0], pin, f"input under-prices {k}")
+            self.assertGreaterEqual(tc.DEFAULT_PRICE[1], pout, f"output under-prices {k}")
+
+    def test_ceiling_is_componentwise_not_lexicographic(self):
+        """The case a tuple max() gets wrong: a cheap input with a dear output.
+
+        Every row in the shipped table is exactly 5x out/in, so lexicographic and
+        componentwise agree today and the bug is invisible. Add one row that breaks
+        the ratio and they diverge: max() keeps the old output price and would
+        silently UNDERSTATE output, the dominant term in most turns.
+        """
+        trap = dict(tc.PRICES)
+        trap["claude-trap-1"] = (8.00, 100.00)
+        self.assertEqual(tc._ceiling(trap)[1], 100.00)
+        self.assertLess(max(trap.values())[1], tc._ceiling(trap)[1])
+
+    def test_lexical_extension_is_not_a_prefix_hit(self):
+        """A future id that merely EXTENDS a key is a different model.
+
+        "claude-opus-4-10" starts with the key "claude-opus-4-1". An unbounded
+        startswith() would bill it at the 4-1 rate and, worse, suppress the unpriced
+        warning, because a prefix hit never reaches _UNPRICED. It must fall through
+        to the ceiling and be flagged.
+        """
+        self.assertIn("claude-opus-4-1", tc.PRICES)
+        ext = "claude-opus-4-10"
+        # It must resolve to NO table key. (Asserting on the returned price alone
+        # would be vacuous here: the ceiling currently equals the opus-4-1 row, so
+        # the buggy and the correct code return the same tuple. The tell is the key
+        # and the warning, not the number.)
+        self.assertIsNone(tc._match_key(ext))
+        self.assertEqual(tc._rate(ext), tc.DEFAULT_PRICE)
+        self.assertIn(ext, tc._UNPRICED)
+
+    def test_recognised_suffixes_still_resolve(self):
+        """A boundary must not break the ids that legitimately carry a suffix."""
+        k = "claude-sonnet-5"
+        for variant in (k + "-20260101", k + "[1m]", k + "-20260101[1m]"):
+            self.assertEqual(tc._rate(variant), tc.PRICES[k], variant)
+            self.assertNotIn(variant, tc._UNPRICED)
+
+    def test_null_token_field_does_not_crash_the_report(self):
+        """A present-but-null token count is legal JSON and must not kill the run.
+
+        `u.get("input_tokens", 0)` returns None for an explicit null, which then
+        multiplies into a TypeError and takes down the entire report over one field
+        in one turn.
+        """
+        u = {"input_tokens": None, "output_tokens": 100,
+             "cache_read_input_tokens": None, "cache_creation_input_tokens": None}
+        cost = tc.price(u, "claude-sonnet-5")
+        self.assertAlmostEqual(cost, 100 * 15.00 / 1e6)
+
+    def test_dated_and_undated_ids_group_as_one_model(self):
+        """Per-model attribution must key on the canonical id.
+
+        Keying on the raw string splits one model across two rows, each carrying a
+        fraction of the turns. The grand total stays correct, which is precisely why
+        nobody notices.
+        """
+        ev = [A(T0, model="claude-sonnet-5", cost=1.0,
+                usage={"input_tokens": 10, "output_tokens": 20}),
+              A(T0 + 1, model="claude-sonnet-5-20260101", cost=2.0,
+                usage={"input_tokens": 30, "output_tokens": 40})]
+        bm = tc.totals(ev)
+        self.assertEqual(list(bm), ["claude-sonnet-5"])
+        self.assertEqual(bm["claude-sonnet-5"]["turns"], 2)
+        self.assertEqual(bm["claude-sonnet-5"]["inp"], 40)
+        self.assertEqual(bm["claude-sonnet-5"]["out"], 60)
 
 
 # ================================================== load() parsing
@@ -500,6 +581,32 @@ class TestRepoNaming(TempEnvTestCase):
 
 
 # ================================================== 7. the profile gate (CLI)
+class TestLive(TempEnvTestCase):
+    """--live must resolve its transcript dir the way every other read does.
+
+    The old code guessed the dir name with `cwd.replace("/", "-")`. Claude Code's
+    slug folds "." and "_" to "-" as well, so the guess missed for any repo path
+    carrying one: --live printed "no transcripts" and exited 0, which from the
+    outside is indistinguishable from an honest empty history. Resolving by the cwd
+    recorded INSIDE the transcript is correct under any slug rule.
+    """
+
+    def test_live_dir_resolves_a_path_the_naive_slug_would_miss(self):
+        cwd = FAKE_ROOT + "/my_app.v2"
+        slug = re.sub(r"[/._]", "-", cwd)          # the slug Claude Code writes
+        path = os.path.join(self.projects, slug, "session.jsonl")
+        write_jsonl(path, [j_user(T0, "hi", cwd), j_asst(T0 + 10)])
+
+        naive = os.path.join(self.projects, cwd.replace("/", "-"))
+        self.assertFalse(os.path.isdir(naive), "the old guess must not find it")
+
+        self.assertEqual(tc.live_dir(cwd), os.path.dirname(path))
+
+    def test_live_dir_is_none_when_nothing_matches(self):
+        self.assertIsNone(tc.live_dir(FAKE_ROOT + "/never-opened"))
+
+
+# ================================================== 7. no-profile / bad-input gate
 class TestGate(TempEnvTestCase):
     """No profile means no billing commands, full stop. Exit 2, point at
     --setup, and never fall back to a shipped default rate card."""
@@ -519,6 +626,64 @@ class TestGate(TempEnvTestCase):
                       self.home, self.data_home)
         self.assertEqual(res.returncode, 2, res.stdout + res.stderr)
         self.assertIn("--setup", res.stdout)
+
+
+# ================================================== 7b. overrides face the predicates
+class TestOverrideValidation(TempEnvTestCase):
+    """A CLI override is an input like any other, so it faces the same predicates
+    the profile had to pass.
+
+    profile_errors() enforces wage > 0 and markup >= 0 on the stored profile, but
+    the one-off overrides used to walk straight past it. --wage 0 did not crash: it
+    printed a confident invoice for nothing. A wrong number stated calmly is the
+    exact failure this tool exists to prevent, so it must refuse and say why.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.write_profile(VALID_PROFILE)
+        self.cwd = FAKE_ROOT + "/code/quoterepo"
+        rec = [j_user(T0, "some real work", self.cwd)]
+        rec += [j_asst(T0 + i * 600) for i in range(1, 13)]
+        self.write_transcript(self.cwd, rec)
+
+    def _refused(self, *flags):
+        res = run_cli(["quoterepo", "--quote", *flags], self.home, self.data_home)
+        self.assertEqual(res.returncode, 2,
+                         f"{flags} was ACCEPTED:\n{res.stdout}{res.stderr}")
+        out = res.stdout + res.stderr
+        self.assertIn("refusing to quote", out)
+        # It must refuse BEFORE doing any work: a full report followed by a refusal
+        # reads as a partial success, and the reader keeps the number they saw.
+        self.assertNotIn("ACTIVE TIME", out.upper())
+        self.assertNotIn("TOTAL", out.upper())
+        return out
+
+    def test_zero_wage_is_refused_not_quoted_at_zero(self):
+        out = self._refused("--wage", "0")
+        self.assertIn("wage must be > 0", out)
+
+    def test_negative_wage_is_refused(self):
+        self._refused("--wage", "-100")
+
+    def test_negative_markup_is_refused(self):
+        out = self._refused("--markup", "-1")
+        self.assertIn("markup must be >= 0", out)
+
+    def test_negative_offline_hours_are_refused(self):
+        out = self._refused("--offline", "-5")
+        self.assertIn("--offline", out)
+
+    def test_non_positive_fx_is_refused(self):
+        out = self._refused("--fx", "0")
+        self.assertIn("--fx", out)
+
+    def test_a_valid_override_still_quotes(self):
+        """The guard must not become a wall: good overrides still work."""
+        res = run_cli(["quoterepo", "--quote", "--wage", "150", "--markup", "0"],
+                      self.home, self.data_home)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertNotIn("refusing to quote", res.stdout)
 
 
 # ================================================== 8. quote arithmetic (CLI)

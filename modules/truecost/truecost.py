@@ -40,8 +40,9 @@ from collections import defaultdict
 # --- pricing, USD per 1M tokens. PUBLIC list prices, safe to ship. -------------
 # cache write 5m = 1.25x in | cache write 1h = 2x in | cache read = 0.1x in
 # KEEP THIS UPDATED. Models ship and prices move; a stale table quietly misprices
-# every report. An unrecognised model falls back to DEFAULT_PRICE, which is the
-# most expensive row in the table: it deliberately overstates rather than flatters.
+# every report. An unrecognised model falls back to DEFAULT_PRICE, which is at
+# least as expensive as every row in the table, per component: it deliberately
+# overstates rather than flatters.
 PRICES = {
     "claude-fable-5":    (10.00, 50.00),
     "claude-opus-4-8":   ( 5.00, 25.00),
@@ -53,23 +54,45 @@ PRICES = {
     "claude-sonnet-4-5": ( 3.00, 15.00),
     "claude-haiku-4-5":  ( 1.00,  5.00),
 }
-# Unknown model: price it at the ceiling of the table. Derived, not a literal, so
-# it stays true when you add a pricier model. Never understate someone's spend.
-DEFAULT_PRICE = max(PRICES.values())
+# Unknown model: price it at the ceiling of the table, COMPONENTWISE. Derived, not
+# a literal, so it stays true when you add a pricier model. Never understate
+# someone's spend.
+#
+# It must be componentwise, not max(PRICES.values()): that is a LEXICOGRAPHIC max
+# over (in, out) tuples, so the input price alone picks the winner and the output
+# price rides along as a tiebreak. Today every row happens to be exactly 5x
+# out/in, so the two agree and nothing is wrong. Add one row with a cheap input
+# and a dear output, say (8.00, 100.00), and the lexicographic max still returns
+# (15.00, 75.00): the fallback would then UNDERSTATE output, the dominant term in
+# most turns, while warn_unpriced() cheerfully prints "overstated, never
+# flattered". The pair below is at least as expensive as every row, per component,
+# which is the promise actually being made. It may correspond to no single row.
+def _ceiling(prices):
+    return (max(p[0] for p in prices.values()),
+            max(p[1] for p in prices.values()))
+
+
+DEFAULT_PRICE = _ceiling(PRICES)
 # Bump this whenever you touch PRICES. It is printed with every cost so the reader
 # can judge staleness; the tool works offline and cannot check prices for you.
 PRICES_AS_OF = "2026-07-14"
 IDLE_CAP = 900.0                # 15 min. Beyond this you left the desk.
 
 HOME = os.path.expanduser("~")
-BASE = os.path.join(HOME, ".claude", "projects")
+# Claude Code's config dir is relocatable via CLAUDE_CONFIG_DIR. Honour it. Hard-
+# coding ~/.claude means a relocated user reads ZERO transcripts and is told, with
+# a straight face, that they have no history. A tool that reports nothing must be
+# sure it is because there is nothing, not because it looked in the wrong place.
+CLAUDE_DIR = os.path.expanduser(
+    os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(HOME, ".claude"))
+BASE = os.path.join(CLAUDE_DIR, "projects")
 
 
 # ============================================================ DATA DIR
 # Everything the USER owns lives here, never next to the script. TRUECOST_HOME
 # makes it overridable, which is also what makes this tool testable.
 def data_dir():
-    d = os.environ.get("TRUECOST_HOME") or os.path.join(HOME, ".claude", "truecost")
+    d = os.environ.get("TRUECOST_HOME") or os.path.join(CLAUDE_DIR, "truecost")
     return os.path.expanduser(d)
 
 
@@ -90,14 +113,48 @@ LEDGER_NAME  = "estimates.jsonl"
 _UNPRICED = set()   # model ids that fell through to DEFAULT_PRICE, for the footer
 
 
-def _rate(model):
-    """Exact key first, then longest prefix: transcripts may carry dated model ids."""
+# What may legally trail a price-table key in a real transcript id: a dated
+# snapshot ("-20251001"), a context-window tag ("[1m]"), or both. Anything else is
+# a DIFFERENT model, not a variant of this one.
+_SUFFIX = re.compile(r"^(-\d{8})?(\[[^\]]*\])?$")
+
+
+def _match_key(model):
+    """The PRICES key this model id resolves to, or None if the table has no row.
+
+    Prefix matching needs a BOUNDARY. A bare startswith() lets a future id lexically
+    extend an existing key and silently inherit the wrong price: "claude-opus-4-10"
+    starts with "claude-opus-4-1", so it would bill at the 4-1 rate AND never reach
+    _UNPRICED, because a prefix hit suppresses the warning. That is the same
+    quiet-mispricing failure the DEFAULT_PRICE ceiling exists to prevent, except on
+    a live path rather than a latent one. So: exact key, or key + a recognised
+    suffix. Longest key wins among the survivors.
+    """
     m = model or ""
     if m in PRICES:
-        return PRICES[m]
-    hits = [k for k in PRICES if m.startswith(k)]
-    if hits:
-        return PRICES[max(hits, key=len)]
+        return m
+    hits = [k for k in PRICES if m.startswith(k) and _SUFFIX.match(m[len(k):])]
+    return max(hits, key=len) if hits else None
+
+
+def _canon(model):
+    """The id to GROUP by: the price-table key when there is one, else the raw id.
+
+    totals() must key on this, not on the raw string. Otherwise one model split
+    across a dated and an undated id ("claude-opus-4-8" and
+    "claude-opus-4-8-20260115") lands as two rows in the per-model table, each with
+    a fraction of the turns. The grand total stays right, which is exactly why it
+    goes unnoticed.
+    """
+    return _match_key(model) or (model or "?")
+
+
+def _rate(model):
+    """Exact key first, then longest bounded prefix: transcripts carry dated ids."""
+    m = model or ""
+    k = _match_key(m)
+    if k:
+        return PRICES[k]
     if m and m != "?":
         _UNPRICED.add(m)
     return DEFAULT_PRICE
@@ -111,18 +168,28 @@ def warn_unpriced():
         print("  Update PRICES at the top of truecost.py with the current list price.")
 
 
+def _tok(d, k):
+    """A token count, treating a present-but-null field as zero.
+
+    `u.get(k, 0)` returns None when the key IS there and holds JSON null, which is
+    legal in a transcript and multiplies into a TypeError that takes down the whole
+    report. One null field in one turn should not cost you the run.
+    """
+    return (d.get(k) or 0) if d else 0
+
+
 def price(u, model):
     pin, pout = _rate(model)
     cc = u.get("cache_creation") or {}
-    w5 = cc.get("ephemeral_5m_input_tokens", 0)
-    w1 = cc.get("ephemeral_1h_input_tokens", 0)
+    w5 = _tok(cc, "ephemeral_5m_input_tokens")
+    w1 = _tok(cc, "ephemeral_1h_input_tokens")
     if not (w5 or w1):
-        w5 = u.get("cache_creation_input_tokens", 0)  # assume 5m: cheaper, never inflates
-    return (u.get("input_tokens", 0) * pin / 1e6
-            + u.get("cache_read_input_tokens", 0) * pin * .10 / 1e6
+        w5 = _tok(u, "cache_creation_input_tokens")   # assume 5m: cheaper, never inflates
+    return (_tok(u, "input_tokens") * pin / 1e6
+            + _tok(u, "cache_read_input_tokens") * pin * .10 / 1e6
             + w5 * pin * 1.25 / 1e6
             + w1 * pin * 2.00 / 1e6
-            + u.get("output_tokens", 0) * pout / 1e6)
+            + _tok(u, "output_tokens") * pout / 1e6)
 
 
 def load(files):
@@ -188,15 +255,17 @@ def totals(ev):
     for e in ev:
         if e["kind"] != "a" or not e["usage"]:
             continue
-        u, d = e["usage"], bm[e["model"]]
+        # Group by the CANONICAL id, so a dated and an undated form of the same
+        # model do not split into two rows that each tell half the truth.
+        u, d = e["usage"], bm[_canon(e["model"])]
         d["cost"] += e["cost"]; d["turns"] += 1
-        d["inp"] += u.get("input_tokens", 0)
-        d["out"] += u.get("output_tokens", 0)
-        d["cr"]  += u.get("cache_read_input_tokens", 0)
+        d["inp"] += _tok(u, "input_tokens")
+        d["out"] += _tok(u, "output_tokens")
+        d["cr"]  += _tok(u, "cache_read_input_tokens")
         cc = u.get("cache_creation") or {}
-        d["cw"] += ((cc.get("ephemeral_5m_input_tokens", 0)
-                     + cc.get("ephemeral_1h_input_tokens", 0))
-                    or u.get("cache_creation_input_tokens", 0))
+        d["cw"] += ((_tok(cc, "ephemeral_5m_input_tokens")
+                     + _tok(cc, "ephemeral_1h_input_tokens"))
+                    or _tok(u, "cache_creation_input_tokens"))
     return bm
 
 
@@ -446,6 +515,44 @@ def load_profile(loud=True):
             print("  fix it, or re-run: truecost.py --setup")
         return None
     return p
+
+
+def quote_input_errors(p, wage, markup, offline, fx):
+    """The predicates the PROFILE has to pass, applied to the EFFECTIVE values.
+
+    A one-off override is an input like any other. profile_errors() already enforces
+    wage > 0 and markup >= 0 on the stored profile, but the overrides used to walk
+    straight past it: `--wage 0` did not crash, it printed a confident invoice for
+    nothing, and `--markup -1` quietly billed below cost. A wrong number stated
+    calmly is this tool's cardinal sin. The check was already written; it was simply
+    never pointed at the overrides.
+    """
+    eff = dict(p)
+    if wage is not None:
+        eff["wage"] = wage
+    if markup is not None:
+        eff["markup"] = markup
+    errs = profile_errors(eff)
+    if offline is not None and offline < 0:
+        errs.append(f"--offline must be >= 0 (got {offline!r})")
+    if fx is not None and fx <= 0:
+        errs.append(f"--fx must be > 0 (got {fx!r})")
+    return errs
+
+
+def refuse_bad_quote_inputs(p, wage, markup, offline, fx):
+    """Fail BEFORE any work is printed. A half-report then a refusal reads as a
+    partial success, and the whole point is that nothing plausible-looking escapes.
+    """
+    errs = quote_input_errors(p, wage, markup, offline, fx)
+    if not errs:
+        return
+    print("\n  refusing to quote: these numbers are not usable.")
+    for x in errs:
+        print(f"    - {x}")
+    print("\n  A quote built on a bad input is worse than no quote: it is wrong,")
+    print("  and it looks right. Fix the flag, or re-run: truecost.py --setup\n")
+    sys.exit(2)
 
 
 def require_profile(cmd):
@@ -994,11 +1101,31 @@ def r_all():
     print()
 
 
+def live_dir(cwd):
+    """The transcript dir for THIS cwd, found the same way every other read is.
+
+    Never derive the dir name from the path. `cwd.replace("/", "-")` assumes the
+    slug encodes nothing but the separator, and it does: Claude Code folds "." and
+    "_" to "-" as well. So the guess misses for any repo whose path carries one,
+    r_live prints "no transcripts", exits 0, and looks exactly like an honest empty
+    history. Every other command in this file already resolves the dir by reading
+    the cwd recorded INSIDE the transcript (see the REPO NAMING note), which is
+    correct under any slug rule the tool does not control. Do the same here.
+    """
+    for d in sorted(glob.glob(os.path.join(BASE, "*"))):
+        if not os.path.isdir(d):
+            continue
+        fs = sorted(glob.glob(os.path.join(d, "*.jsonl")))
+        if fs and _peek_cwd(fs) == cwd:
+            return d
+    return None
+
+
 def r_live(poll=5.0):
     """Watch the session running right now. Idle time is never counted."""
     cwd = os.getcwd()
-    d = os.path.join(BASE, cwd.replace("/", "-"))
-    if not os.path.isdir(d):
+    d = live_dir(cwd)
+    if not d:
         print(f"no transcripts for {cwd}")
         return
     print(f"LIVE  {os.path.basename(cwd)}   idle >15m not counted   ctrl-c to stop\n")
@@ -1394,6 +1521,8 @@ def main(argv=None):
         r_all()
     elif a.projects:
         prof = require_profile("--quote") if a.quote else None
+        if prof:
+            refuse_bad_quote_inputs(prof, a.wage, a.markup, a.offline, a.fx)
         found = repos(a.projects)
         if not found:
             print(f"  no transcripts for: {', '.join(a.projects)}")
