@@ -191,6 +191,29 @@ dry-run plan and the manifest are stable across runs.
     skeleton verbatim as `<target>/scripts/recurrence-guard.template.sh` (retain `.template` — it is inert
     until `BANNED` is filled) so the friend can clone-and-fill one per bug class later without the kit
     tree, per the module README. `README.md` stays reference-only (never copied to the target).
+2.8 **truecost (opted, any profile, from `modules/truecost/`).** GLOBAL ONLY. This is a **`~/.claude`
+    write**: confirm the distinct yes from Q5 first, then COPY-VERBATIM (nothing to FILL) all six files
+    into `~/.claude/skills/truecost/`: `SKILL.md`, `truecost.py`, `test_truecost.py`,
+    `clients.example.json`, `README.md`, `.gitignore`.
+    - **Not a Phase-2.2 skill install.** 2.2 puts a single `SKILL.md` into `<target>/.claude/skills/`.
+      truecost is a skill *plus its script*, and its `SKILL.md` invokes that script at
+      `~/.claude/skills/truecost/truecost.py`, so the two must land together, globally. A repo-scoped copy
+      would be a skill pointing at a file that was never installed. Nothing is written into `<target>`.
+    - Copy the folder **whole**, from the pinned-`kit_ref` extract (source fidelity, preamble), so a
+      concierge install is byte-identical to the `cp -R modules/truecost/. <dest>/` hand-install in the
+      module README and the shipped suite can be run against it. Use `cp -R modules/truecost/. <dest>/` or
+      an explicit six-file list: a `modules/truecost/*` glob silently skips the `.gitignore`. The module
+      `README.md` **does** ship here, unlike the 2.6 / 2.7 reference-only convention: it is the
+      user-facing doc for a global skill, and there is no `<target>` doc tree to route it into.
+    - **No `settings.json` change**, in the target or globally: a user-level skill is auto-discovered.
+      There is no Phase-4 counterpart (contrast 4.4b for the statusline).
+    - No `chmod +x` (2.4 is `.sh`-only; truecost is invoked as `python3 <path>`).
+    - Record all six files as `action: "create"` rows (`path` = the `~/`-prefixed dest, `source` = the
+      `modules/truecost/...` kit path, `backup: null`), the same way 2.5-global records its `~/.claude`
+      write, so uninstall can reverse it. `~/.claude/truecost/` (or `$TRUECOST_HOME`) is created by the
+      TOOL at run time, not by the installer: do not create it and give it no manifest row. Add
+      `"truecost"` to the manifest footer's `modules[]` at 7.1.
+    - Detail, hand-install, privacy: `modules/truecost/README.md`.
 
 ---
 
@@ -317,7 +340,7 @@ a subdirectory CLAUDE.md loads lazily — only the project-root file is reliably
 ```
 0  preconditions + manifest header (+ multi_party obligations-form decision)
 1  .agent-docs/  (minimal → [standard] → [full], additive; root index.md row-prune; reference/ + reviews/ seeds; obligations ledger file|section per manifest multi_party)
-2  .claude/ rules + skills(bare-name) + non-assembled hooks (+ chmod)
+2  .claude/ rules + skills(bare-name) + non-assembled hooks (+ chmod) + opted modules (2.5 statusline · 2.6 agent crew · 2.7 recurrence guard · 2.8 truecost, the one step whose writes land ONLY in ~/.claude/skills/truecost/, outside <target>)
 3  assemble pretooluse-safety-gates.sh  (base + stack fragment + Q5 rules; bash -n)   [Standard+]
 4  .claude/settings.json  (fill → prune hooks to profile → union stack allowlist → validate JSON)
 5  <target>/CLAUDE.md constitution  (create, or never-clobber merge)

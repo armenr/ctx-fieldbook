@@ -211,10 +211,34 @@ the profile already includes.
 - Only offer if `modules/statusline/` exists in this build. Ask the SCOPE:
   - **global** (recommended): copy to `~/.claude/statusline.py` + add `statusLine` to `~/.claude/settings.json`
     (`python3 ~/.claude/statusline.py`). **This writes to the user's GLOBAL config** — flag it explicitly
-    and get a distinct yes (it's the one module that touches `~/.claude`, not just the repo).
+    and get a distinct yes (this and truecost are the two modules that touch `~/.claude`, not just the repo).
   - **project**: copy to `<target>/.claude/statusline.py` + add `statusLine` to the target
     `settings.json` with the **absolute** target path. Overrides any global statusline for this repo.
   - Detail + the exact settings blocks + mechanics: `modules/statusline/README.md`.
+
+**Everyone (any profile) · truecost:**
+> "Want truecost? It reads the session transcripts Claude Code already writes to your disk, and tells you
+> how long work *actually* took: active hours per project and per task, idle stripped out, plus a forecast
+> for the next one from your own measured history instead of a guess. Optional client billing if you
+> invoice. Python-only, no installs, no network calls. It installs globally, so it works in every repo, not
+> just this one. Or skip it."
+- Only offer if `modules/truecost/` exists in this build. There is **no scope question**: truecost is
+  **global only** (`~/.claude/skills/truecost/`). It reads transcripts across every project, and its
+  `SKILL.md` invokes the script at `~/.claude/skills/truecost/truecost.py`, so a repo-scoped copy would
+  point at a file that was never installed. Do not offer a project scope; there isn't one.
+- **This writes to the user's GLOBAL config dir.** Flag it explicitly and get a distinct yes, exactly as
+  for the statusline's global scope. Nothing is written into the target repo.
+- Say plainly that it reads their local transcripts and makes no network calls: the data stays on their
+  machine.
+- **Name the second `~/.claude` write, and do not undersell it.** At RUN time (not install time) truecost
+  creates `~/.claude/truecost/` (or `$TRUECOST_HOME`) the first time they log a forecast (`--predict` /
+  `--settle`) or run `--setup`. This is **not** billing-only: forecasting is the skill's headline use and
+  needs no profile, so a user who only ever asks "how long will this take" still gets the directory and an
+  `estimates.jsonl` prediction ledger. `--setup` additionally writes `profile.json` (their wage). The
+  client map, `clients.json`, is only ever **read**: they hand-author it from `clients.example.json`, and
+  the tool never creates it. The reporting commands (`--all`, `--tasks`, `--estimate`, `--live`, a bare
+  `<repo>`) write nothing at all.
+- Detail + hand-install + the privacy notes: `modules/truecost/README.md`.
 
 **Full only:**
 > "Full ships two optional add-ons: the **research pipeline** skill (adversarially-gated multi-source

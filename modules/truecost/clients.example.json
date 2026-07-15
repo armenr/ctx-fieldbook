@@ -1,0 +1,77 @@
+{
+  "_README": [
+    "EXAMPLE FILE. Every client below is fake. Copy it, then edit it.",
+    "",
+    "  cp clients.example.json ~/.claude/truecost/clients.json",
+    "",
+    "The REAL file lives at ~/.claude/truecost/clients.json, NOT in the skill folder.",
+    "That way you can overwrite the skill on update without losing your data.",
+    "Set TRUECOST_HOME to put the data directory somewhere else.",
+    "",
+    "Map CLIENTS to the REPOS they span, so a client that lives in 3 repos is billed as one.",
+    "  repos     : repo directory names. A name that matches two different working",
+    "              directories is reported as parent/name, so use that form to be exact.",
+    "  retainer  : monthly retainer, in `currency`. omit for project work.",
+    "  billed    : one-off amount already invoiced (project work). omit for retainers.",
+    "  currency  : the currency THIS client pays in.",
+    "  fx_to_usd : what 1 unit of THIS client's currency is worth in USD. REQUIRED",
+    "              whenever the client's currency is not your profile currency, and not",
+    "              USD. Without it the tool has to treat the amount as USD, and the",
+    "              effective rate is then wrong by the whole FX gap.",
+    "  markup    : the markup you target on THIS client. 0 = family rate (break-even).",
+    "              It sets the `target` column and the healthy/thin verdict.",
+    "              omit to use the default markup from your profile.",
+    "  offline_h : hours spent OUTSIDE Claude Code (calls, deploys, QA, review).",
+    "              The transcripts CANNOT see these. If you leave it 0 you are undercounting.",
+    "  note      : anything you want to remember.",
+    "",
+    "`internal` is the non-billable list: your own repos, experiments, dotfiles. They are",
+    "real hours that earn nothing, which is exactly why they belong here. --setup reads",
+    "this file when it MEASURES your utilization: client repos are pre-selected as",
+    "billable, internal ones are not."
+  ],
+
+  "clients": {
+    "acme": {
+      "repos": ["acme-web", "acme-api", "acme-admin"],
+      "retainer": 2000,
+      "currency": "USD",
+      "markup": 0.5,
+      "offline_h": 6,
+      "note": "Fake client. Three repos, one invoice. Retainer since Jan. Weekly call is the offline_h."
+    },
+    "globex": {
+      "repos": ["globex-storefront"],
+      "billed": 5000,
+      "currency": "USD",
+      "markup": 0.5,
+      "offline_h": 10,
+      "note": "Fake client. Fixed-fee project, already invoiced. offline_h covers launch QA and deploys."
+    },
+    "initech": {
+      "repos": ["initech-site"],
+      "billed": 0,
+      "currency": "EUR",
+      "fx_to_usd": 1.08,
+      "markup": 0,
+      "offline_h": 2,
+      "note": "Fake client. markup 0 = family rate, so break-even IS the target. Pays in EUR, so it carries its own fx_to_usd."
+    },
+    "hooli": {
+      "repos": ["hooli-dashboard", "hooli-mobile"],
+      "currency": "USD",
+      "offline_h": 4,
+      "note": "Fake client. No retainer and no billed amount yet, so it reports as UNBILLED. That is the point: unbilled work is visible."
+    }
+  },
+
+  "internal": {
+    "_note": "NOT billable. These are what drag utilization below 100%.",
+    "repos": [
+      "dotfiles",
+      "scratch",
+      "my-side-project",
+      "learning-rust"
+    ]
+  }
+}

@@ -2,6 +2,16 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## Unreleased
+
+- **New any-profile opt-in module: `truecost`.** Python-only, stdlib-only measurement of what work
+  actually took, read from Claude Code's own session transcripts: active hours per project and per task
+  (idle stripped), token spend by model, reference-class forecasts, and measured calibration; client
+  billing optional. Ships a stdlib regression suite (`test_truecost.py`). Offered at **any** profile,
+  **global only** (`~/.claude/skills/truecost/`), since its `SKILL.md` invokes the script by that path; it
+  is the second module that writes to `~/.claude` and gets its own distinct yes. No `settings.json` wiring
+  (a user-level skill is auto-discovered). Instructions in the module README.
+
 ## 0.6.3 — 2026-07-14 (room-thread continuity + destructive-git safety)
 
 Two field-born deltas, both dogfooded before ship.
