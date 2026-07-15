@@ -2,7 +2,11 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
-## Unreleased
+## 0.7.0 — 2026-07-15 (the truecost module — first external contribution)
+
+Contributed via PR #1; every change-request round-trip closed with verification on both
+sides (the contributor pre-ran an adversarial review of their own branch; the maintainer
+re-verified all 16 items independently before merge).
 
 - **New any-profile opt-in module: `truecost`.** Python-only, stdlib-only measurement of what work
   actually took, read from Claude Code's own session transcripts: active hours per project and per task

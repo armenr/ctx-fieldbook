@@ -42,10 +42,11 @@ T0 = int(datetime(2026, 1, 5, 10, 0, 0, tzinfo=timezone.utc).timestamp())
 
 # A cwd that exists on nobody's machine. Repo naming must work from the cwd
 # recorded inside the transcript, without ever consulting the filesystem.
-# Deliberately NOT a home-dir shape (/Users/..., /home/...): the kit's scrub gate
-# denies machine-path literals anywhere under modules/, and rightly so. The path is
-# never resolved, only read back out of a synthetic transcript, so any absolute
-# path that does not exist will do.
+# Deliberately NOT a user-home-directory shape: the kit's scrub gate denies
+# machine-path literals anywhere under modules/ (including spelling those shapes
+# out in a comment — this one learned that firsthand), and rightly so. The path
+# is never resolved, only read back out of a synthetic transcript, so any
+# absolute path that does not exist will do.
 FAKE_ROOT = "/tmp/nobody-truecost-test"
 
 # One valid billing profile, reused across tests. Chosen so every intermediate
