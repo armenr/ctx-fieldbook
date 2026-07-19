@@ -102,8 +102,12 @@ if echo "$CMD" | grep -qE "${CSEP}git +checkout([^[:alnum:]_]|$)" &&
 fi
 echo "$CMD" | grep -qE "${CSEP}git +restore([^[:alnum:]_]|$)" &&
   ask "Safety gate: 'git restore' reverts uncommitted changes irrecoverably. Confirm the target with the operator."
-echo "$CMD" | grep -qE "${CSEP}git +clean +-[A-Za-z]*[fF][A-Za-z]*([^[:alnum:]_]|$)" &&
-  ask "Safety gate: 'git clean' with a force flag deletes untracked files irrecoverably. Confirm the target with the operator."
+# Force may arrive as an adjacent cluster (-fd), a SEPARATED cluster (-d -f), or the long form
+# (--force), anywhere within the clean invocation — but never across a command separator (;&|),
+# so a force flag on a LATER command cannot false-fire this rule. The dash must follow
+# whitespace (a real flag token), so a filename containing "-f" stays silent.
+echo "$CMD" | grep -qE "${CSEP}git +clean( +[^;&|]*)? +(-[A-Za-z]*[fF][A-Za-z]*|--force)([^[:alnum:]_]|$)" &&
+  ask "Safety gate: 'git clean' with a force flag (any position, -f/-fd/-d -f/--force) deletes untracked files irrecoverably. Confirm the target with the operator."
 echo "$CMD" | grep -qE "${CSEP}git +stash +(drop|clear)([^[:alnum:]_]|$)" &&
   ask "Safety gate: 'git stash drop/clear' discards stashed work irrecoverably. Confirm with the operator."
 

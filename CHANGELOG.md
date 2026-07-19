@@ -2,6 +2,32 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.8.2 — 2026-07-19 (micro: convergence-day fixes)
+
+Three fixes found by adopters converging v0.8.0/0.8.1 the same day — each probed firsthand by
+its finder, verified independently here, and battery-proven before ship.
+
+- **`smoke-runtime.js` → `smoke-runtime.cjs`**: the smoke is CommonJS; a bare `.js` is parsed
+  as ESM under a `"type": "module"` repo root and dies at line 1 — self-test false-FAILs for
+  that whole repo class. `.cjs` runs in every context (verified under both).
+- **`git clean` force gate unified and hardened**: canonical rule 3b failed open on the
+  `--force` long form AND the separated short cluster (`git clean -d -f`) — only the adjacent
+  cluster gated. Now ONE separator-bounded any-position rule: adjacent/separated/long all ask;
+  the dash must follow whitespace (filenames containing `-f` stay silent); a force flag on a
+  LATER command cannot cross `;`/`&`/`|` to false-fire. 16/16 battery (7 fire, incl. both
+  holes; 9 stay silent). Trees that collapsed a `--force`-carrying local graft to canonical
+  had silently lost the clause — reconcile forward.
+- **`lint-docs.README.md` rule table extended** through rules 20/21 (it stopped at 19 — a new
+  blocking rule nobody's README admits to is how a gate becomes a surprise), including the
+  ratified COMPANION-FILE form for rule 20: `PREFIX-NNN-slug.md` is the one claimant of an id;
+  `PREFIX-NNN.qualifier.md` (dot form) are its companions — one-id families get a legal shape
+  while the collision detector stays fully armed.
+- **Ruling shipped with the directive (doc-only here):** rule 21's mechanical scope will
+  narrow to update-in-place surfaces in the coming refinement (retroactive enforcement over
+  append-only records demanded edits the schema forbids); until then, local scope-down over
+  write-once dirs is SANCTIONED early adoption. New append-only entries type their deferral
+  homes at write time.
+
 ## 0.8.1 — 2026-07-19 (patch: fanout executes)
 
 Field-found on v0.8.0's convergence day (credit: an adopter's launch repro + inversion-hazard
