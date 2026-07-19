@@ -2,6 +2,30 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.8.1 — 2026-07-19 (patch: fanout executes)
+
+Field-found on v0.8.0's convergence day (credit: an adopter's launch repro + inversion-hazard
+design input): the dispatch preamble's `fanout()` had NEVER successfully executed — it passed
+promises to the thunk-expecting `parallel()`, throwing at launch on every real run, while the
+hash check stayed green (integrity proven, behavior never). The kit's own proof-of-execution
+lesson, on the kit's own flagship gate.
+
+- **`fanout()` thunk-wraps internally** — call sites pass the plain per-item call. Preamble
+  body re-hashed; `PINNED_PREAMBLES` updated — **old-hash pasted copies now FAIL CW1 by
+  design** (the mismatch nag is the migration pressure).
+- **BREAKING for interim workarounds:** call sites that hand-thunk (`(item) => () => agent(…)`)
+  must REVERT to the plain call — under the fixed fanout they'd become thunks-returning-thunks,
+  which would complete with function objects as results (fail-QUIET, strictly worse). A runtime
+  guard closes that hole mechanically: a function-typed `runFn` return raises a loud
+  pre-0.8.1-interim-detected error from fanout's own frame (in-thunk throws read as mere drops;
+  the guidance outranks both accounting paths).
+- **`smoke-runtime.js` (NEW) + a self-test smoke step:** the preamble primitives are now
+  EXECUTED under a mirror of the runtime's thunk contract on every self-test run (4 cases:
+  plain-call completes · interim-thunk throws the guidance · degrade accounts the drop · R3a
+  throws on drop) — hash-checking proves integrity, the smoke proves behavior, and the step
+  prints its ran-and-passed line (a silent success is indistinguishable from a never-ran).
+  node-absent degrades LOUD (smoke SKIPPED, behavior UNVERIFIED), never silently.
+
 ## 0.8.0 — 2026-07-18 (the observation-integrity batch)
 
 A hardening release built from one week of fleet field findings — every item carries incident

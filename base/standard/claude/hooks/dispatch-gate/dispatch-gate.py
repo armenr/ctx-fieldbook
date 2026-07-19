@@ -98,7 +98,10 @@ DEGRADED_ANNOTATION = _TOKEN_LOWER + ":degraded"      # the escape-hatch marker:
 # self-test (--self-check) FAILS LOUD if the two drift, so the pin can never silently rot.
 # ---------------------------------------------------------------------------------------------------
 PINNED_PREAMBLES = {
-    "1.0.0": "8ad4c9432314624fffca418c6591df81e7257fbc6111b75983fa35ea8c11503b",
+    # 0.8.1: fanout() thunk-wraps internally (the pre-fix body's fan-out had never executed — promises
+    # into a thunk-expecting parallel) + the interim-thunk loud guard. Old-hash copies now FAIL CW1 by
+    # design: the mismatch nag IS the migration pressure toward the executing body.
+    "1.0.0": "745a31d8d5a6141497308793fff23d81845c465963fe82d0095cd7f302c62866",
 }
 PREAMBLE_CURRENT_VERSION = "1.0.0"
 

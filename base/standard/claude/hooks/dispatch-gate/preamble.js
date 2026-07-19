@@ -1,4 +1,4 @@
-// ==== FIELDBOOK DISPATCH PREAMBLE v1.0.0 contract:v1 sha256:8ad4c9432314624fffca418c6591df81e7257fbc6111b75983fa35ea8c11503b ==== generated, DO NOT HAND-EDIT
+// ==== FIELDBOOK DISPATCH PREAMBLE v1.0.0 contract:v1 sha256:745a31d8d5a6141497308793fff23d81845c465963fe82d0095cd7f302c62866 ==== generated, DO NOT HAND-EDIT
 //   Regenerate via make-preamble.sh after any edit; the dispatch-conformance gate hash-checks the body
 //   between these markers (check CW1). The one normative statement of R1-R6 is
 //   .agent-docs/reference/fail-loud-dispatch-contract.md — this block ENFORCES it, never restates it.
@@ -133,7 +133,31 @@ async function fanout(inputs, runFn, opts) {
   opts = opts || {};
   const label = opts.label || 'fanout';
   const idOf = opts.idOf || function (inp, i) { return i; };
-  const results = await parallel(inputs.map(function (inp, i) { return runFn(inp, i); })); // null-in-place on drop
+  // parallel() demands an array of THUNKS — fanout wraps each item's call internally (0.8.1) so the
+  // author passes the plain per-item call. Entailment: the wrap proves each item's work STARTS inside
+  // parallel's slot management; the drop-accounting below is what proves it FINISHED.
+  // The interim-detection flag is raised IN-thunk but thrown from fanout's OWN frame after parallel
+  // returns: an in-thunk throw is null-in-placed by the runtime's catch (it reads as a mere drop, and
+  // the degrade path would not throw at all) — the guidance must outrank both accounting paths.
+  var interimDetected = false;
+  const results = await parallel(inputs.map(function (inp, i) {
+    return function () {
+      const r = runFn(inp, i);
+      if (typeof r === 'function') {
+        // A function-typed return = a pre-0.8.1 interim call site still thunk-wrapping by hand.
+        // Without this guard, parallel would resolve the inner FUNCTION OBJECT as the "result" —
+        // no agent runs, the workflow COMPLETES, and the failure is QUIET.
+        interimDetected = true;
+        throw new Error('interim thunk shape');
+      }
+      return r;
+    };
+  })); // null-in-place on drop
+  if (interimDetected) {
+    throw new Error('FAIL-LOUD ' + label + ': runFn returned a FUNCTION — pre-0.8.1 interim ' +
+      'thunk-wrapping detected at this call site; pass the plain call (fanout thunk-wraps ' +
+      'internally since 0.8.1).');
+  }
   if (opts.degrade) {
     // R3(b): build the per-item manifest, diff-degrade, hand it downstream (coverage INCOMPLETE on any drop).
     const received = results.map(function (r, i) {

@@ -15,6 +15,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -157,6 +158,25 @@ def main():
         if not fired:
             fail("KNOWN-POSITIVE CANARY '%s' did NOT fire — the refuter is broken; '0 findings' here is a "
                  "smell, not a clean pass (the wu-refs scar inverted)." % cname)
+
+    # --- runtime smoke (0.8.1): EXECUTE the preamble primitives, don't just hash them. The hash check
+    # proves integrity; behavior needs a run — field-proven when fanout() shipped with a call shape that
+    # had never executed once, hash-green throughout. Observation-integrity: a skipped smoke is reported
+    # LOUD as unverified, never as a silent pass (node absent must not read as smoke-clean).
+    smoke = os.path.join(HERE, "smoke-runtime.js")
+    node = shutil.which("node")
+    if node is None:
+        print("self-test: WARNING — node not on PATH: runtime smoke SKIPPED, preamble behavior UNVERIFIED "
+              "this run (hash integrity only). Install node to close the gap.")
+    else:
+        sproc = subprocess.run([node, smoke], capture_output=True, text=True)
+        if sproc.returncode != 0:
+            fail("RUNTIME SMOKE failed — the preamble primitives do not execute under the runtime "
+                 "contract:\n" + sproc.stdout + sproc.stderr)
+        else:
+            # Print the ran-and-passed line: a silent success is indistinguishable from a never-ran
+            # (observation-integrity — the smoke must be visible as having FIRED this run).
+            print("self-test: runtime smoke OK — preamble primitives executed under the runtime contract.")
 
     # --- end-to-end normal-mode assertions (real block / allow / audited-bypass paths) ---
     # 1. a FAIL fixture DENIES.
