@@ -215,7 +215,12 @@ grep_corpus() {  # $1 = referent ; $2 = mode (F|sym, default F) → prints  path
   if [ "$mode" = "sym" ]; then
     out="$(git grep -n --untracked -E -e "\`[^\`]*\b${ref}\b[^\`]*\`" -- "${corpus_pathspecs[@]}" 2>"$err_capture")"; grc=$?
   else
-    out="$(git grep -n --untracked -F -e "$ref" -- "${corpus_pathspecs[@]}" 2>"$err_capture")"; grc=$?
+    # -w (WORD-BOUNDARY anchoring): a fixed-string referent matches only as a WHOLE WORD, so a short/
+    # generic token (`the`, `cat`) cannot flood by substring-matching inside larger words (`there`,
+    # `category`). Paired with the ≥3-char minimum-length gate in process_grammar, this is the anti-flood
+    # hardening: length kills single-char noise (`h`); -w kills substring noise. Distinctive tokens (a
+    # path, `--ttl`, `MYAPP_BASE_URL`, `§3.2`) are unaffected — they are already whole-word bounded.
+    out="$(git grep -n --untracked -F -w -e "$ref" -- "${corpus_pathspecs[@]}" 2>"$err_capture")"; grc=$?
   fi
   [ $grc -le 1 ] || fail_loud "git grep failed (rc=$grc) matching referent '$ref': $(trim "$(cat "$err_capture" 2>/dev/null)")"
   printf '%s' "$out"
@@ -273,7 +278,11 @@ classify_hit() {  # $1 = hit line (path:line:content) ; $2 = referent ; $3 = def
 #   $5 match-mode (plain|auto) · stdin = referents
 process_grammar() {
   local label="$1" coverage="$2" hit_state="$3" unc_weight="$4" match_mode="${5:-plain}"
-  local refs; refs="$(sort -u | grep -v '^$' || true)"
+  # MINIMUM-LENGTH gate (≥3 chars): drop single-/two-char referents (`h`, `x`, `io`) at intake so they
+  # can never flood the sweep. This is the extraction-side half of the anti-flood hardening; the
+  # word-boundary (-w) matcher in grep_corpus is the matching-side half. A bare identifier that survives
+  # the gate is still matched only inside a code span (sym mode), so a prose stop-word cannot flood either.
+  local refs; refs="$(sort -u | grep -v '^$' | awk 'length($0) >= 3' || true)"
   if [ -z "$refs" ]; then
     printf '── %s ──\n  (no referents changed under this grammar)\n\n' "$label"
     return 0
@@ -388,15 +397,43 @@ run_license_join() {
   fi
 }
 
-# ── run the canary (a "(no doc-claims found)" worksheet is trustworthy only if the canary fired) ──
+# ── run the canary (a "(no doc-claims found)" worksheet is trustworthy only if a canary fired) ──
+#
+# A DEFAULT known-positive canary the SCRIPT ITSELF carries: the sentinel literal below lives in this file,
+# so a fresh install with NO .docrefs.config still gets a fired canary by default — its clean sweep is
+# evidence, not an unverified guess. ENTAILMENT: the default canary proves the grep INSTRUMENT fires (the
+# matcher can read a file and return a known-present hit); it does NOT prove the sweep fires on the RIGHT
+# proposition (that a real doc claim about the changed code would be found) — that stronger, corpus-scoped
+# assurance is what a CONFIGURED `canary:` referent buys. The loud UNVERIFIED path now fires ONLY when the
+# canary mechanism is turned OFF on purpose (`canary: off`), never merely because none was configured.
+DEFAULT_CANARY_SENTINEL="doc-refs-default-canary-sentinel-do-not-remove"
+
 run_canary() {
-  [ -n "$cfg_canary" ] || { canary_note="no canary configured — emptiness is UNVERIFIED (see baseline-mechanism.md §1)"; return 0; }
-  if [ -n "$(grep_corpus "$cfg_canary")" ]; then
-    canary_note="canary fired ('$cfg_canary' still found) — emptiness is trustworthy"
+  # explicit opt-out — the ONLY remaining UNVERIFIED path (the operator disabled the instrument knowingly).
+  case "$(printf '%s' "$cfg_canary" | tr '[:upper:]' '[:lower:]')" in
+    off|none|disabled|false|no)
+      echo "doc-refs: NOTE — canary mechanism disabled (canary: $cfg_canary); a '(no doc-claims)' this run is UNVERIFIED by choice." >&2
+      canary_note="canary DISABLED (canary: $cfg_canary) — emptiness is UNVERIFIED (see baseline-mechanism.md §1)"
+      return 0 ;;
+  esac
+  if [ -n "$cfg_canary" ]; then
+    # CONFIGURED corpus-scoped canary — proposition-level: proves the sweep still finds a real doc claim.
+    if [ -n "$(grep_corpus "$cfg_canary")" ]; then
+      canary_note="canary fired ('$cfg_canary' still found) — emptiness is trustworthy"
+    else
+      echo "doc-refs: WARNING — the configured canary '$cfg_canary' did NOT fire this run." >&2
+      echo "doc-refs: the grammar set may be mis-scoped or the corpus glob unreached — treat any '(no doc-claims)' as evidence about the QUERY, not the world." >&2
+      canary_note="!! CANARY DID NOT FIRE — emptiness is UNTRUSTWORTHY (mis-scoped grammar / unreached corpus)"
+    fi
+    return 0
+  fi
+  # DEFAULT self-carried canary — instrument-level: grep the sentinel out of THIS script's own file.
+  self_path="${BASH_SOURCE:-$0}"
+  if [ -n "$self_path" ] && grep -Fq -- "$DEFAULT_CANARY_SENTINEL" "$self_path" 2>/dev/null; then
+    canary_note="default canary fired (self-test sentinel found) — the grep instrument works; emptiness is trustworthy (instrument-level — set a corpus 'canary:' for proposition-level assurance)"
   else
-    echo "doc-refs: WARNING — the configured canary '$cfg_canary' did NOT fire this run." >&2
-    echo "doc-refs: the grammar set may be mis-scoped or the corpus glob unreached — treat any '(no doc-claims)' as evidence about the QUERY, not the world." >&2
-    canary_note="!! CANARY DID NOT FIRE — emptiness is UNTRUSTWORTHY (mis-scoped grammar / unreached corpus)"
+    echo "doc-refs: WARNING — the DEFAULT self-test canary did NOT fire; the grep instrument itself may be broken (locale, a shadowed grep, an unreadable script)." >&2
+    canary_note="!! DEFAULT CANARY DID NOT FIRE — the grep instrument is not firing; emptiness is UNTRUSTWORTHY"
   fi
 }
 run_canary

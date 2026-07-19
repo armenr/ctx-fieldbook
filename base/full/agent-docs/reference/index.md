@@ -50,6 +50,16 @@ re-verified) · Last-verified (facts drift — date the check) · See also.
   **Open when:** authoring any dynamic workflow or sub-agent fan-out, declaring a governed dispatch, or dispositioning a dispatch-gate finding.
   **Carry-away:** COMPLETED is not COMPLETE — a dependent phase never consumes a partial set unknowingly; a shortfall halts loud or degrades DECLARED, never silently.
 
+- 🔬 `observation-integrity.md` — the observation-integrity contract: the one-line instrument test
+  ("if this instrument were broken, empty, or truncated, would my output look any different?"), the three
+  failure shapes (tool-failed-silence · stored-verdict-rot · query-inverted-from-proposition) with their
+  DIFFERENT required gates, the five runtime rules for verification commands, and the per-gate ENTAILMENT
+  requirement.
+  **Open when:** authoring or reviewing any gate/verification command, recording any "clean"/"empty"
+  verdict, or dispositioning a claim drawn from a summarized/truncated view.
+  **Carry-away:** an instrument that looks the same broken or clean has produced an artifact, not an
+  observation — and a canary proves the instrument FIRES, never that it fires on the right proposition.
+
 <!-- EXAMPLE (delete this block on the first real project-authored reference doc):
 - `architecture-overview.md` — **Open when:** you need the big-picture shape before changing a
   subsystem. **Carry-away:** <the one-sentence fact this doc anchors>. (Verified <date>.)

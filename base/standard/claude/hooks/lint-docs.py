@@ -70,6 +70,12 @@ REFERENCE_FIELDS = ("related", "supersedes", "superseded-by", "archived-from")
 # swallowed by the shorter RV / R alternatives. The trailing `-` already disambiguates, but longest-first
 # keeps that correctness independent of the anchoring detail.
 ID_PREFIX_RE = re.compile(r"^(OQ|WU|LP|REV|RV|FR|R|INC)-", re.IGNORECASE)
+# The canonical typed-ID prefixes as a plain LIST (the same family ID_PREFIX_RE encodes, plus ADR whose
+# on-disk artifacts are keyed `[ADR-]NNNN-slug.md`). Rules 20 build a filename/id regex from this list
+# UNIONED with any caller-declared --extra-id-prefixes, ordered longest-first so a short prefix (`R`)
+# never swallows a longer one that shares its stem (`REV`, `RV`). Kept as data (not only baked into
+# ID_PREFIX_RE) so the collision detector can reuse the exact same prefix family without re-deriving it.
+CANONICAL_ID_PREFIXES = ("ADR", "INC", "REV", "OQ", "WU", "LP", "RV", "FR", "R")
 
 RULES = {
     1: "front-matter present + parseable",
@@ -95,6 +101,10 @@ RULES = {
         "resolved REV-NNN design-rev",
     19: "baseline-integrity — a sealed docs-baseline is write-once: it carries a seal, and no parked row "
         "may post-date it",
+    20: "id-collision (INTERIM) — one typed-ID number maps to at most one artifact (file or index-row "
+        "slug) in this tree",
+    21: "deferral-home typing — a DEFER→ annotation's home is a typed-ID that resolves (no prose-only "
+        "home)",
 }
 
 FAIL = "FAIL"
@@ -331,8 +341,18 @@ def strip_emphasis(s):
     return EMPHASIS_LEAD_RE.sub("", s.strip())
 
 
+# Rule 21 — a DEFER-with-home annotation. The kit's own DEFER grammar (standing-rules-core "write the
+# deferral down"; the inbound-reference sweep treats a `DEFER→` row as a first-class obligation surface
+# POINTING at a home) is `DEFER→ <home>`: the arrow points a deferral at the artifact that will absorb it.
+# This captures the FIRST token after the arrow (the home) — an alphanumeric-led run — so a genuine home id
+# (`WU-0042`, `M5-07`) is caught, while a bare `DEFER→` with no following home (a prose mention of the
+# concept) does not match at all and is left alone. Both the Unicode arrow `→` and the ASCII `->` fallback
+# are accepted; `TRACKED → …` / `DEFER (reason)` do not match (the token before the arrow must be DEFER).
+DEFER_HOME_RE = re.compile(r"DEFER\s*(?:→|->)\s*([A-Za-z][\w-]*)")
+
+
 # ---------------------------------------------------------------------------------------------------
-# Per-doc checks (rules 1–12, 14, 15)
+# Per-doc checks (rules 1–12, 14, 15, 21)
 # ---------------------------------------------------------------------------------------------------
 
 def find_section(body, heading_words):
@@ -590,6 +610,32 @@ def check_document(path, root, findings, now_date, warn_days, fail_days, workpla
             findings.append(Finding(15, FAIL, rpath, field_line.get("work-unit", 1),
                                     "work-unit '%s' not found in now/work-plan.md" % wu))
 
+    # Rule 21 — deferral-home typing (the TRACTABLE CORE of a larger accepted design: this rule types the
+    # HOME only). A `DEFER→ <home>` deferral must point at a TYPED-ID home (a known prefix or a declared
+    # --extra-id-prefix) that RESOLVES via the existing rule-8 resolver — so a deferral has a machine-
+    # followable target, not a prose gesture. A prose-only home (`DEFER→ the multipart unit`) FAILS
+    # "untyped deferral home". OUT OF SCOPE (do NOT implement here): target-STATUS checking (whether the
+    # home is open vs already-resolved) and code-comment sweeping — those are the rest of the accepted
+    # design, deliberately not built by this rule.
+    for m in DEFER_HOME_RE.finditer(body):
+        home = m.group(1).strip()
+        is_typed = bool(
+            ID_PREFIX_RE.match(home)
+            or re.match(r"^ADR-\d", home, re.IGNORECASE)
+            or (extra_id_re is not None and extra_id_re.match(home))
+        )
+        if not is_typed:
+            findings.append(Finding(21, FAIL, rpath, 1,
+                                    "untyped deferral home 'DEFER→ %s' — a deferral must point at a "
+                                    "TYPED-ID home (a known prefix or a --extra-id-prefix), not prose"
+                                    % home))
+            continue
+        resolved, detail = resolve_reference(home, path, root, extra_id_re)
+        if not resolved:
+            findings.append(Finding(21, FAIL, rpath, 1,
+                                    "deferral home 'DEFER→ %s' %s"
+                                    % (home, detail or "does not resolve")))
+
     # Rule 12 — now/ staleness (warn-not-fail; requires --now).
     if now_date is not None:
         parts = os.path.dirname(rpath).replace("\\", "/").split("/")
@@ -719,6 +765,77 @@ def check_index_completeness(root, findings):
             findings.append(Finding(13, FAIL, rel(idx, root), 1,
                                     "phantom entries (in index, no such file): %s"
                                     % ", ".join(phantom)))
+
+
+# ---------------------------------------------------------------------------------------------------
+# Rule 20 — same-number/different-slug ID-COLLISION detector (an INTERIM detector — see below). Across the
+# managed tree, if ONE typed-ID numeric prefix (REV-033, OQ-030 — every typed prefix, incl. any
+# --extra-id-prefixes) maps to MORE THAN ONE distinct artifact — a content file `PREFIX-NNN-slug.md`, or a
+# filename token cited on an index ENTRY ROW — with DIFFERENT slugs, the run FAILS and names both.
+#
+# WHY THIS IS THE ONLY SURFACE THAT NOTICES: a same-number/different-slug collision (two authors both minting
+# REV-033, as `REV-033-foo.md` and `REV-033-bar.md`) produces DISTINCT filenames and INDIVIDUALLY-VALID index
+# rows — so a git merge applies both cleanly, and reference-resolution stays green (each file exists; each id
+# is a resolvable ledger prefix). Nothing else in the schema is even looking at the pair. Meanwhile the
+# CITATION GRAPH is now corrupt: a `related: REV-033` (or a prose `see REV-033`) silently binds to whichever
+# of the two the reader happens to open. This rule is the tripwire for exactly that.
+#
+# ENTAILMENT — what a clean rule-20 pass DOES answer: "does each typed-ID number identify AT MOST ONE artifact
+# in THIS tree (working copy, this branch)". What it does NOT answer: cross-branch / pre-merge collisions (two
+# branches each minting REV-033 before they meet — this sees only the merged/working tree, not the other
+# branch); and the SEMANTIC correctness of any citation (that `related: REV-033` points at the INTENDED review,
+# not merely at a unique one). It is INTERIM: the durable fix is a mint-time id allocator; until then this is
+# the after-the-fact catch.
+# ---------------------------------------------------------------------------------------------------
+
+def check_id_collisions(root, findings, collision_fname_re):
+    """Rule 20 driver. `collision_fname_re` matches `^(PREFIX)-(NNN)-(slug).md$` for the canonical +
+    caller-declared prefix family. Builds id_key -> {slug: {source-paths}} across content filenames and
+    index entry-row filename tokens, and FAILs any id_key that carries more than one distinct slug."""
+    if collision_fname_re is None:
+        return
+    idmap = {}
+
+    def record(idkey, slug, source):
+        idmap.setdefault(idkey, {}).setdefault(slug, set()).add(source)
+
+    for path in iter_markdown(root):
+        parts = path.replace("\\", "/").split("/")
+        if "templates" in parts:
+            continue  # kit scaffolding carries EXAMPLE ids, never a live collision
+        name = os.path.basename(path)
+        rp = rel(path, root)
+        if name == "index.md":
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                    itext = fh.read()
+            except OSError:
+                continue
+            scan = HTML_COMMENT_RE.sub("", itext)  # commented-out example rows are not live entries
+            for line in scan.split("\n"):
+                if not INDEX_ENTRY_ROW_RE.match(line):
+                    continue  # prose / heading / continuation — a named id here is not an index entry
+                for tok in INDEX_TOKEN_RE.findall(line) + INDEX_LINK_RE.findall(line):
+                    m = collision_fname_re.match(tok)
+                    if m:
+                        record(m.group(1).upper() + "-" + m.group(2), m.group(3).lower(),
+                               "%s (index row)" % rp)
+            continue
+        if name.endswith(".template.md"):
+            continue
+        m = collision_fname_re.match(name)
+        if m:
+            record(m.group(1).upper() + "-" + m.group(2), m.group(3).lower(), rp)
+
+    for idkey in sorted(idmap):
+        slugs = idmap[idkey]
+        if len(slugs) <= 1:
+            continue
+        sources = sorted({s for srcset in slugs.values() for s in srcset})
+        findings.append(Finding(20, FAIL, sources[0], 1,
+            "typed-ID '%s' collides — %d distinct slugs (%s) map to it across: %s (same-number/different-"
+            "slug: distinct filenames + valid index rows merge clean while the citation graph corrupts)"
+            % (idkey, len(slugs), ", ".join(sorted(slugs)), "; ".join(sources))))
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -1181,7 +1298,17 @@ def load_adopted_paths(root):
     return adopted
 
 
-def load_workplan_wus(root):
+def load_workplan_wus(root, extra_harvest_re=None):
+    """Return the set of work-unit ids declared in now/work-plan.md, or None when there is no live plan.
+
+    RULE-15 LOCAL-SPINE SEAM: rule 15 resolves a checkpoint/doc `work-unit:` value against THIS set, so a
+    truthful local spine the kit does not canonize (a milestone `M5-07`, declared via --extra-id-prefixes)
+    must be harvestable here too — otherwise a real work-unit id would fail rule 15 purely for not being
+    `WU-`-shaped. The harvest is therefore the UNION of the canonical `WU-NNNN` tokens AND, when the caller
+    declared local prefixes, tokens matching `extra_harvest_re` (built from the SAME --extra-id-prefixes
+    plumbing rule 8 already uses — no new flag). The seam does NOT become resolve-anything: with no
+    declared prefixes the union collapses to WU-only, so an undeclared `M5-07` still fails rule 15.
+    """
     for cand in ("now/work-plan.md", "now/work-plan.template.md"):
         p = os.path.join(root, cand)
         if os.path.isfile(p):
@@ -1191,9 +1318,13 @@ def load_workplan_wus(root):
                 return None
             try:
                 with open(p, "r", encoding="utf-8", errors="replace") as fh:
-                    return set(WU_RE.findall(fh.read()))
+                    text = fh.read()
             except OSError:
                 return None
+            wus = set(WU_RE.findall(text))
+            if extra_harvest_re is not None:
+                wus |= {m.group(0) for m in extra_harvest_re.finditer(text)}
+            return wus
     return None
 
 
@@ -1214,7 +1345,7 @@ def iter_markdown(root):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Doc-schema linter for .agent-docs/ (CONVENTIONS.md lint rules 1-15 + kit-local 16-18).")
+        description="Doc-schema linter for .agent-docs/ (CONVENTIONS.md lint rules 1-15 + kit-local 16-21).")
     ap.add_argument("--root", default=".agent-docs",
                     help="root of the .agent-docs tree to lint (default: .agent-docs)")
     ap.add_argument("--now", default=None,
@@ -1245,20 +1376,42 @@ def main(argv=None):
     # Caller-declared LOCAL typed-ID prefixes (--extra-id-prefixes) → one compiled alternation, ordered
     # longest-first so a short prefix never swallows a longer one that shares its stem.
     extra_id_re = None
+    extra_prefixes = []
     if args.extra_id_prefixes:
-        prefixes = sorted((p.strip() for p in args.extra_id_prefixes.split(",") if p.strip()),
-                          key=len, reverse=True)
-        if prefixes:
-            extra_id_re = re.compile(r"^(?:%s)-" % "|".join(re.escape(p) for p in prefixes),
+        extra_prefixes = sorted((p.strip() for p in args.extra_id_prefixes.split(",") if p.strip()),
+                                key=len, reverse=True)
+        if extra_prefixes:
+            extra_id_re = re.compile(r"^(?:%s)-" % "|".join(re.escape(p) for p in extra_prefixes),
                                      re.IGNORECASE)
 
+    # RULE-15 SEAM harvest regex — the SAME declared prefixes, in an UNANCHORED word-bounded form for
+    # scanning free work-plan text (extra_id_re is `^`-anchored for .match on a single ref token; this one
+    # finds the ids embedded in prose). Only the extra prefixes need it; the canonical WU- family is
+    # harvested by WU_RE. None when no local prefixes were declared, so the seam stays WU-only by default.
+    extra_harvest_re = None
+    if extra_prefixes:
+        extra_harvest_re = re.compile(
+            r"\b(?:%s)-[A-Za-z0-9][A-Za-z0-9-]*" % "|".join(re.escape(p) for p in extra_prefixes),
+            re.IGNORECASE)
+
+    # RULE-20 collision filename/id regex — the canonical prefix family UNIONed with the declared extras,
+    # ordered longest-first so `R` never swallows `REV`/`RV`. Matches `PREFIX-NNN-slug.md`.
+    collision_prefixes = sorted(set(CANONICAL_ID_PREFIXES) | set(extra_prefixes), key=len, reverse=True)
+    collision_fname_re = re.compile(
+        # \d{1,4}: canonical spines use 3-4 digits, but declared extra-prefix spines may
+        # number narrower (e.g. a 2-digit local spine) — wider coverage cannot false-positive,
+        # since the rule fires only on a genuine multi-slug collision for one numeric key.
+        r"^(%s)-(\d{1,4})-(.+)\.md$" % "|".join(re.escape(p) for p in collision_prefixes),
+        re.IGNORECASE)
+
     findings = []
-    workplan_wus = load_workplan_wus(root)
+    workplan_wus = load_workplan_wus(root, extra_harvest_re)
 
     for path in iter_markdown(root):
         check_document(path, root, findings, now_date, args.warn_days, args.fail_days, workplan_wus,
                        extra_id_re)
     check_index_completeness(root, findings)
+    check_id_collisions(root, findings, collision_fname_re)
     check_adr_prefix_advisory(root, findings)
     check_obligations_receivable(root, findings)
     check_charters(root, findings, extra_id_re)

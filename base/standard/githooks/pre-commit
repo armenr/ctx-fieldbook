@@ -53,6 +53,34 @@ fi
 # system lives elsewhere.
 DOC_ROOT=".agent-docs"
 
+# ── required-tool policy (REQUIRED_GATE_TOOLS) ──────────────────────────────
+# Space-separated list of GATE LABELS (e.g. "lint format") whose tool MUST be
+# present. DEFAULT EMPTY -> today's behavior is byte-preserved: an absent tool
+# still degrades to a graceful skip. When a label is listed and its tool is NOT
+# on PATH, run_gate FAILs the commit LOUDLY instead of skipping — a repo that
+# has DECLARED a gate required does not get to pass by silently not running it.
+# Overridable from the environment (REQUIRED_GATE_TOOLS="lint" git commit ...).
+#
+# VERSIONS-CHECK-FIRST: the tool-absence check sits BEFORE the gate is executed
+# (and a required-absent gate returns non-zero, which no later gate's green can
+# clear), so a required-but-missing tool can never be masked by a subsequent
+# gate going vacuously green.
+#
+# ENTAILMENT — a green run now means "clean UNDER THE DECLARED-REQUIRED
+# TOOLCHAIN" (every required tool was present AND its gate passed). It still
+# does NOT mean the tool VERSIONS match any expectation — a present-but-drifted
+# tool (wrong major version, stale linter ruleset) passes this check. Pinning
+# tool VERSIONS is deliberately out of scope here (future work).
+REQUIRED_GATE_TOOLS="${REQUIRED_GATE_TOOLS:-}"
+
+# membership test: is gate label $1 declared required?
+gate_required() {
+  case " $REQUIRED_GATE_TOOLS " in
+    *" $1 "*) return 0 ;;
+    *)        return 1 ;;
+  esac
+}
+
 staged="$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null || true)"
 if [ -z "$staged" ]; then
   exit 0
@@ -101,6 +129,16 @@ run_gate() {
   # first whitespace-delimited token = the executable to probe
   gate_tool="${gate_cmd%%[[:space:]]*}"
   if ! command -v "$gate_tool" >/dev/null 2>&1; then
+    # A wired gate (past the placeholder/empty skips above) whose tool is missing.
+    # If this label is DECLARED REQUIRED, that absence FAILS the commit loudly —
+    # otherwise it degrades to the historical graceful skip (byte-preserved default).
+    if gate_required "$gate_label"; then
+      {
+        echo "pre-commit: x $gate_label gate is REQUIRED but its tool '$gate_tool' is NOT on PATH -> commit blocked"
+        echo "pre-commit:   required by policy REQUIRED_GATE_TOOLS='$REQUIRED_GATE_TOOLS' -> install '$gate_tool' or amend the policy"
+      } >&2
+      return 1
+    fi
     echo "pre-commit: $gate_label gate tool '$gate_tool' not on PATH -> skipped (install it or wire the gate)"
     return 0
   fi

@@ -36,6 +36,13 @@ tags: []
 - <Chosen option> — named here; defended in Decision.
 
 **Deciding axis:** <the one dimension the choice turned on — the thing that, if it changed, changes the answer>.
+**Axis check (test it against YOUR OWN option before writing Decision):** does the deciding axis
+SELECT the chosen option too — by the same criterion that killed the runner-up? If defending your
+choice reaches for a DIFFERENT justification than the one that rejected the alternatives, the axis is
+rhetoric reverse-engineered from the conclusion. The tell: a second, softer criterion appearing in
+Decision that never appeared here. (Field-found: an ADR named an axis, used it to kill the runner-up,
+then chose an option that failed the same axis — flagged by its reviewer as the clearest author-bias
+tell in the document.)
 **Flip-condition:** <what would reverse this — a different goal, new evidence, a changed constraint
 (e.g. "for a product rather than a reference architecture, we'd choose the runner-up")>.
 

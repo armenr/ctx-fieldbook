@@ -173,8 +173,13 @@ prompt + the return schema, every time.
   discovery, ambiguity, or temptation is recorded to a REQUIRED `discoveries[]` / `out_of_scope` field and
   NOT acted on. If the unexpected thing BLOCKS the task, the agent returns `status: blocked` and stops — it
   never invents a workaround or expands scope to get unblocked.
-- **Non-builder agents are READ-ONLY.** Recon, fixture, review, and verify agents never mutate the tree;
-  only ONE fenced build agent per track mutates. And NOBODY — builder included — un-applies an
+- **Non-builder agents are READ-ONLY — as MECHANISM, not intent.** Recon, fixture, review, and verify
+  agents never mutate the tree; only ONE fenced build agent per track mutates. Read-only is an intent
+  until the prompt makes it a mechanism: name an explicit `mktemp -d` scratch home for anything the agent
+  must write, and fence the repo tree in the prompt ("the repo tree is read-only to you; all scratch goes
+  in your mktemp dir"). Field evidence both directions: a verify agent without the fence leaked a scratch
+  test into the tree; with the fence, dispatches open their reports with "repo untouched — all work in
+  scratch." And NOBODY — builder included — un-applies an
   UNCOMMITTED change-under-review with destructive git (`checkout`/`restore`/`stash`/`reset`): reverse
   the edit IN PLACE and verify the blob hash (`git hash-object`) — a red-on-HEAD probe restores by
   re-applying the edit, never by discarding the working tree (field incident: a verifier's
@@ -182,6 +187,12 @@ prompt + the return schema, every time.
 - **Parallel tracks run in isolated worktrees over pre-verified disjoint file ownership** — the ownership
   sets come from the recon-first pass and the orchestrator verifies disjointness BEFORE launch, so tracks
   cannot clobber each other mid-flight.
+- **Compose-to-file for every shared-channel message.** A message body composed inside a shell string is
+  one backtick away from COMMAND SUBSTITUTION splicing your own toolchain's stdout under your byline — and
+  the post tool returns success either way (true about the syscall, false about the content). Compose to a
+  file via a QUOTED heredoc delimiter (`<<'EOF'` — the quote is the fence, not style: an unquoted delimiter
+  expands backticks in the body), then post the file's bytes. Field incident: an agent actively WRITING
+  about this failure class shipped it mid-sentence — the examples in its message executed.
 - **No agent commits or merges.** The orchestrator is the sole, serial integration point; it reads every
   diff firsthand and an independent reviewer audits for scope-creep BEFORE any commit. Discoveries are the
   operator's to adjudicate.
@@ -226,6 +237,18 @@ reference primitive, and the hardened declared-degraded escape-hatch grammar —
 `.agent-docs/reference/fail-loud-dispatch-contract.md` and is mechanised by the `dispatch-gate` PreToolUse
 hook; this section points there and never restates it.
 
+### Observation integrity (before anything is RECORDED as seen)
+
+A filtered, failed, or truncated view is byte-indistinguishable from a clean or empty world — so every
+observation that becomes a recorded verdict must pass: *"if this instrument were broken, empty, or
+truncated, would my output look any different?"* The one normative statement — the three failure shapes
+(tool-failed-silence · stored-verdict-rot · query-inverted-from-proposition), the five runtime rules
+(pinned-runner-only · assert-exit-0 · no-stderr-suppression-on-verification · empty==clean-owes-a-
+same-run-canary · harness-summarized-views-owe-raw-source-re-derivation), and the per-gate ENTAILMENT
+requirement — lives in `.agent-docs/reference/observation-integrity.md`; this section points there and
+never restates it. Seam: fail-loud governs COMPLETENESS, observation-integrity governs SEEING, the
+deferral test governs OMISSION — a verdict must survive all three.
+
 ## Interrupt triage — inbound mail is a doorbell, not a detour
 
 When a message lands mid-work (agent-room mail, or any async inbound), CLASSIFY before
@@ -248,6 +271,15 @@ wins:
 
 Unsure which rung → rung 4 plus the rung-3 one-liner. Cheap-and-reversible beats
 misclassified.
+
+**The payload-inlining hazard (why the read-then-act rule is net-enforced, not text-only):** a
+notification channel that INLINES the message body trains agents out of the state-advancing read —
+the content is already in context, so the cursor-advancing read feels redundant, and the lazy path
+diverges from the correct one precisely because the notification was helpful. Any rule whose correct
+path costs more than its lazy path decays under convenience and must be carried by a NET (a hook that
+re-delivers unconsumed state, a gate that blocks the skip), never by rule text alone. Corollary for
+mechanism designers: put the rule in the OPERATIVE surface (the hook/nag the agent actually follows),
+not the broadcast — agents follow the nag, not the announcement.
 
 (Lineage: work-unit INTAKE miniaturized for interrupts — the handler stays short: capture,
 route, return.)

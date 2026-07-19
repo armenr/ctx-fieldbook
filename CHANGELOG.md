@@ -2,6 +2,70 @@
 
 All notable changes to the Fieldbook kit. Versions track `kit-version.txt`.
 
+## 0.8.0 — 2026-07-18 (the observation-integrity batch)
+
+A hardening release built from one week of fleet field findings — every item carries incident
+provenance, every code change shipped red/green-proven and independently re-verified.
+
+- **`reference/observation-integrity.md`** (NEW, Standard+): the observation-integrity contract —
+  the one-line instrument test ("if this instrument were broken, empty, or truncated, would my
+  output look any different?"), the THREE failure shapes needing DIFFERENT gates
+  (tool-failed-silence · stored-verdict-rot · query-inverted-from-proposition), five runtime rules
+  for verification commands (pinned-runner-only · assert-exit-0 · no stderr-suppression ·
+  empty==clean-owes-a-same-run-canary · summarized-views-owe-raw-source-re-derivation), and the
+  per-gate written ENTAILMENT requirement — the only gate that catches shape (c), where an
+  instrument runs perfectly while answering a different question than the verdict claims.
+  `standing-rules-core` carries a pointer plus the seam: fail-loud governs COMPLETENESS,
+  observation-integrity governs SEEING, the deferral test governs OMISSION.
+- **Lint rule 20 (INTERIM ID-collision detector):** same-number/different-slug typed-ID collisions
+  (two writers allocating `REV-033` concurrently) produce distinct filenames + individually-valid
+  index rows — git merges clean and reference-resolution stays green while the citation graph
+  corrupts. Rule 20 is the surface that notices, across content filenames and index entry rows,
+  canonical + declared extra prefixes, 1-4-digit numerics. Interim by design: identity-allocation
+  redesign (derived vs allocated) is a separate open program.
+- **Lint rule 21 (deferral-home typing, tractable core):** a `DEFER→ <home>` must point at a
+  TYPED-ID home; prose homes ("the multipart unit") fail. Typing-and-resolution only — target
+  OPEN-status checking and code-comment sweeping are the disclosed deferred halves (status
+  semantics belong to the corpus-lifecycle program).
+- **Lint rule 15 gains the local-spine seam:** checkpoint `work-unit:` now resolves against the
+  union of `WU-NNNN` and declared `--extra-id-prefixes` spines — a truthful `work-unit: M5-07`
+  lints clean where it previously forced truthful-fails-vs-lying-passes on the tier's first use.
+- **doc-refs sweep:** referent extraction gains a ≥3-char floor + whole-word anchoring (single-char
+  referents can no longer flood the worksheet), and the sweep now ships a DEFAULT self-carried
+  canary — a fresh install's clean sweep is instrument-level evidence by default instead of
+  printing UNVERIFIED forever. Disclosed limits: the default canary proves the grep instrument
+  fires (not sweep-path-level); a 3-char stop-word referent from an unusual grammar shape remains
+  possible.
+- **pre-commit `REQUIRED_GATE_TOOLS` policy:** a declared-required gate whose tool is absent from
+  PATH now FAILS the commit loudly (absence checked before later gates can go vacuously green) —
+  closing the absent-tool-reads-as-green hole. Default empty = prior behavior byte-preserved;
+  not-wired/empty-gate skips stay honest skips. Version-drift checking = disclosed future work.
+- **`stacks/go/code-intel.md`:** the `-test` parenthetical replaced with a full entailment
+  statement — `-test` adds test binaries as roots and can only make MORE code reachable, inverting
+  the IMPL→WIRED probe into the weakest possible form (field measurement, one commit: 48
+  unreachable bare vs 0 with `-test`); plus the honest fix guidance (allowlist or per-unit
+  `-whylive`, not a one-token swap).
+- **Dispatch discipline riders** (`standing-rules-core`): read-only-as-MECHANISM (explicit
+  `mktemp -d` scratch + repo-tree fence in every non-builder prompt) · compose-to-file for every
+  shared-channel message (the quoted heredoc delimiter IS the fence — a body composed in a shell
+  string is one backtick from executing its own examples) · the payload-inlining hazard (a rule
+  whose lazy path is cheaper than its correct path must be carried by a NET; put rules in the
+  operative surface — agents follow the nag, not the broadcast).
+- **ADR template — the axis check:** after naming the deciding axis, test it against YOUR OWN
+  option; a Decision reaching for a criterion the Alternatives never faced is rhetoric
+  reverse-engineered from the conclusion.
+- **`concierge/merge-strategy.md` trued:** backup-location prose corrected to the executor's
+  canonical `.kit-backups/<ts>/` home (was stale inline-sibling paths); the targeted-insert-vs-
+  round-trip contradiction reconciled honestly (the rule is MINIMAL DIFF verified by the dry-run
+  gate, not a write technique — and the prose's false claim about the executor is corrected, on
+  the record); NEW role-override-block pattern for installing into already-agent-ified repos
+  (field-proven).
+- **Deferred, disclosed** (each fails no promise; all queued): `TYPECHECK_CMD` thirteenth scalar +
+  fill-checker + `kit_source` manifest field (a concierge-focused batch) · the vercel safety-gate
+  fragment's payload home · P3 changed-symbol-adjacent comment-drift grammar (language-aware;
+  rides the docs-impact gate's next iteration) · rule-21's OPEN-status + code-comment halves
+  (lifecycle program) · run_gate tool-VERSION drift checking.
+
 ## 0.7.0 — 2026-07-15 (the truecost module — first external contribution)
 
 Contributed via PR #1; every change-request round-trip closed with verification on both

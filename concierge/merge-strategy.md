@@ -37,8 +37,19 @@ each clobbering MERGE is surfaced and confirmed on its own.
 The constitution goes in the target's project-root `CLAUDE.md`. If one already exists (the friend has
 their own instructions), we ADD to it, never overwrite it.
 
-1. **Back up** verbatim → `<target>/CLAUDE.md.fieldbook-backup-<UTC-timestamp>`. Record the backup path
-   in the manifest entry.
+**If the existing CLAUDE.md DEFINES AN AGENT ROLE** (the repo is already agent-ified — its constitution
+opens with "you are the X agent" for some other purpose), marker-blocking alone is not enough: two role
+documents in one file leave the session to guess which identity governs. Ask the friend what THIS
+workspace's sessions are for, then prepend a short ROLE-OVERRIDE block above everything, stating (a)
+which role governs sessions in this clone, (b) that the pre-existing role material below is preserved
+byte-for-byte and scoped — e.g. "the system under assessment" or "the role for a different deployment
+of this repo" — and (c) any hard fences that follow (a read-only posture toward the other role's
+production surfaces is the common one). Field-proven on an install into a live agent-workspace repo:
+the override block is what kept the new session from adopting the resident role.
+
+1. **Back up** verbatim → `<target>/.kit-backups/<UTC-timestamp>/CLAUDE.md` (the canonical backup home
+   the executor uses — one timestamped dir per install run, never inline siblings). Record the backup
+   path in the manifest entry's `backup` field.
 2. **Marker-block the kit content.** Wrap everything the kit contributes in:
    ```
    <!-- kit:start (fieldbook <kit-version>) -->
@@ -98,7 +109,8 @@ config, so we **deep-merge** and validate.
 1. **Parse both** — the existing target settings.json and the kit-built one (`scaffold-plan.md` Phase 4).
    If the target file is invalid JSON, do NOT proceed on it: back it up, report the parse error, and ask
    whether to replace-from-backup or hand-fix — never write a merge on top of unparseable JSON.
-2. **Back up** → `<target>/.claude/settings.json.fieldbook-backup-<UTC-timestamp>`.
+2. **Back up** → `<target>/.kit-backups/<UTC-timestamp>/.claude/settings.json` (same canonical
+   backup home as CLAUDE.md; the manifest row's `backup` field records it).
 3. **Merge rules (append/union, never replace a scalar the friend set):**
    - `hooks.<Event>[]` — **append** the kit's hook entries to any existing array for that event; do not
      drop the friend's hooks. Dedup on the exact `command` string (a re-run adds nothing new).
@@ -135,11 +147,15 @@ dispatch surface — appended to the `PreToolUse` array beside the existing `Bas
   row, so both survive and a re-run stays idempotent. Do **not** collapse them into a single
   `"Agent|Workflow"` matcher — the two surfaces need distinct commands to co-exist under the dedup, and the
   shim reads the surface from `$1`.
-- **Wire by TARGETED TEXT INSERT, never a JSON round-trip.** Splice the two blocks into the `PreToolUse`
-  array by matching the surrounding compact style — never `json.load` → mutate → `json.dump` the whole
-  file. A full-file round-trip was measured at a 135-line reformat where the targeted insert is ~3 lines;
-  a settings history the friend can actually review depends on the diff touching only the lines that
-  changed, not re-emitting every key (`merge-tool.py` is the write primitive that does exactly this).
+- **The rule is MINIMAL DIFF, verified before apply — not a particular write technique.** The friend's
+  settings history must show only the lines that semantically changed (a full-file round-trip was once
+  measured at a 135-line reformat where ~3 lines sufficed). The sanctioned executor (`merge-tool.py`)
+  merges via a canonical JSON round-trip **gated by its dry-run diff**: when the target is already
+  canonical-format, that IS the minimal diff — run the dry-run, read the diff, apply only if it shows
+  pure semantic additions. If the dry-run reveals a reformat larger than the change, STOP and splice the
+  blocks by targeted text insert instead (match the surrounding style by hand). Prose here previously
+  claimed the executor does targeted inserts — corrected: the executor round-trips; the DIFF GATE is
+  what enforces the rule, whichever technique satisfies it.
 - **Allowlist union.** Add `Bash(${CLAUDE_PROJECT_DIR}/.claude/hooks/dispatch-gate/dispatch-gate.sh:*)` to
   `permissions.allow[]` (set-union, dedup — §2 step 3) so a sub-agent inheriting the allowlist runs the gate
   without a prompt. The kit only ever adds to `allow`.

@@ -67,10 +67,21 @@ a registered `http.Handler`, a registered CLI command, or a public API a real co
 ## Reachability baseline
 
 The deterministic oracle the IMPL→WIRED proof cites is **`deadcode`** (golang.org/x/tools/cmd/deadcode):
-via Rapid Type Analysis it builds the whole-program call graph rooted at every `main` (add `-test` for test
-binaries) and prints every function unreachable from those entrypoints — one reproducible, scriptable run:
-`deadcode ./...`. A symbol you just added that it lists is IMPL-not-WIRED; `-whylive=pkg.Func` prints the
-live call path when it *is* wired. RTA is conservative (interface / reflection / `func`-value calls may
+via Rapid Type Analysis it builds the whole-program call graph rooted at every `main` and prints every
+function unreachable from those entrypoints — one reproducible, scriptable run: `deadcode ./...`. A
+symbol you just added that it lists is IMPL-not-WIRED; `-whylive=pkg.Func` prints the live call path
+when it *is* wired.
+
+> **Entailment statement — NEVER add `-test` when the question is IMPL→WIRED.** `-test` adds test
+> binaries as ROOTS, so it can only make MORE code reachable: a symbol reachable only from tests then
+> reads as wired — the query inverts into the weakest possible probe for exactly the
+> built-but-not-wired failure this oracle exists to catch. Field measurement, one commit: bare = 48
+> unreachable functions (the entire not-yet-wired backend among them); with `-test` = 0. `-test`
+> answers a DIFFERENT question — "dead even counting tests" (deletion candidates) — and is legitimate
+> only for that question. Fair warning that the fix is not a one-token swap: the bare query is NOISY
+> (most hits are legitimate test infrastructure), so a wiring gate needs either an allowlist for known
+> test-only symbols or the per-unit form — `-whylive='pkg.Symbol'`, exit-checked — which proves the
+> specific claim without the corpus-wide noise. RTA is conservative (interface / reflection / `func`-value calls may
 over-report reachability, and `//go:linkname` is unmodelled), so a *listed* symbol is a strong dead verdict
 but an *absent* one still wants the call-hierarchy walk above to name the caller. If `deadcode` is
 unavailable, fall back to the grep-floor call-chase and record in `traceability/` that the evidence is
