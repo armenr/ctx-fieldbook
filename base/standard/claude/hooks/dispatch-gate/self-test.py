@@ -163,7 +163,7 @@ def main():
     # proves integrity; behavior needs a run — field-proven when fanout() shipped with a call shape that
     # had never executed once, hash-green throughout. Observation-integrity: a skipped smoke is reported
     # LOUD as unverified, never as a silent pass (node absent must not read as smoke-clean).
-    smoke = os.path.join(HERE, "smoke-runtime.js")
+    smoke = os.path.join(HERE, "smoke-runtime.cjs")
     node = shutil.which("node")
     if node is None:
         print("self-test: WARNING — node not on PATH: runtime smoke SKIPPED, preamble behavior UNVERIFIED "

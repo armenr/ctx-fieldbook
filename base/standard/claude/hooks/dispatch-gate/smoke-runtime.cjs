@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// smoke-runtime.js — EXECUTE the preamble primitives against a runtime-contract mirror.
+// smoke-runtime.cjs — (.cjs: CommonJS in EVERY context — a bare .js is parsed as ESM under a type:module repo root and require() dies at line 1, so the smoke silently never runs exactly where adopters converge; field-found day one)
+// EXECUTE the preamble primitives against a runtime-contract mirror.
 // provenance: kit-template · created: 2026-07-19
 //
 // The hash check (CW1) proves the preamble's INTEGRITY; it says nothing about BEHAVIOR —
@@ -11,7 +12,7 @@
 // Entailment: this proves the shipped call SHAPES execute under the runtime contract —
 // it does NOT prove the live runtime's semantics beyond that contract, nor agent behavior.
 //
-// Usage: node smoke-runtime.js [path-to-preamble.js]   (exit 0 = all cases pass)
+// Usage: node smoke-runtime.cjs [path-to-preamble.js]   (exit 0 = all cases pass)
 'use strict';
 const fs = require('fs');
 const vm = require('vm');
